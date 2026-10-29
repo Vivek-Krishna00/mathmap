@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# env
+.env
+.env.local
+.env.*.local
+# real secrets for the self-contained compose stack; only the .example is tracked
+.env.compose
+
+# builds
+client/dist/
+dist/
+build/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.neon
