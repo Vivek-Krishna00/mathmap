@@ -20,6 +20,7 @@ It also lets the community **contribute resources and problems**, **vote** on wh
 | Area | What it does |
 | --- | --- |
 | **Concept graph** | 66 concepts across 6 branches, connected by 67 prerequisite edges forming a DAG. |
+| **Goal tracks** | Nine applied destinations — Cryptography & Security, Machine Learning & AI, Game Development, Application & Web Development, MLOps, Data Science, Computer Graphics, Quant Finance, Operations Research — each a curated lens onto the maths it needs. Start from a goal instead of a subject and the roadmap is built and titled around it. |
 | **Roadmap generator** | Rule-based, deterministic engine that scores topics, closes over prerequisites, topologically orders them, trims to your chosen length, and attaches a type-diverse resource set. |
 | **Progress tracking** | Save roadmaps, mark topics *not started / in progress / completed*, see progress bars per roadmap and aggregated stats. |
 | **Placement self-check** | 24 multiple-choice questions across the six branches infer the learner's level and interests, then prefill the roadmap wizard — so "current knowledge" is measured rather than self-declared. |

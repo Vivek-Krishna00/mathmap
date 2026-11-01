@@ -10,6 +10,7 @@ import topics from './topics.js';
 import resources from './resources.js';
 import problems from './problems.js';
 import placement from './placement.js';
+import tracks from './tracks.js';
 import users from './users.js';
 
 const SEED_PASSWORD = 'mathmap123';
@@ -67,6 +68,7 @@ const SAMPLE_ROADMAPS = [
 async function truncateAll(client) {
   await client.query(`
     TRUNCATE moderation_log, roadmap_items, roadmaps, problems, placement_questions,
+             track_topics, tracks,
              resource_votes, resource_topics, resources, topic_prerequisites, topics,
              branches, users
     RESTART IDENTITY CASCADE
@@ -144,6 +146,28 @@ async function insertTopics(client, branchMap) {
   if (cycle) throw new Error(`Prerequisite cycle detected: ${cycle.join(' -> ')}`);
 
   return map;
+}
+
+async function insertTracks(client, topicMap) {
+  const missing = [];
+  for (const track of tracks) {
+    const { rows } = await client.query(
+      `INSERT INTO tracks (slug, name, tagline, description, icon, color, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [track.slug, track.name, track.tagline, track.description, track.icon, track.color, track.sortOrder],
+    );
+    for (const slug of track.topics || []) {
+      const topicId = topicMap.get(slug);
+      if (!topicId) {
+        missing.push(`${track.slug} -> ${slug}`);
+        continue;
+      }
+      await client.query('INSERT INTO track_topics (track_id, topic_id) VALUES ($1, $2)', [rows[0].id, topicId]);
+    }
+  }
+  if (missing.length) {
+    throw new Error(`Track references unknown topic slugs:\n  ${missing.join('\n  ')}`);
+  }
 }
 
 async function insertPlacementQuestions(client, branchMap) {
@@ -229,6 +253,9 @@ async function main() {
     const branchMap = await insertBranches(client);
     const userMap = await insertUsers(client);
     const topicMap = await insertTopics(client, branchMap);
+
+    console.log(`[seed] inserting ${tracks.length} goal tracks`);
+    await insertTracks(client, topicMap);
 
     console.log(`[seed] inserting ${placement.length} placement questions`);
     await insertPlacementQuestions(client, branchMap);

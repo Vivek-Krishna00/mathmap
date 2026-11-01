@@ -59,9 +59,11 @@ function HeroPreview() {
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const { data: branchData, loading: branchesLoading } = useFetch(() => api('/branches'), []);
+  const { data: trackData } = useFetch(() => api('/tracks'), []);
   const { data: stats } = useFetch(() => api('/stats'), []);
 
   const branches = branchData?.branches || [];
+  const tracks = trackData?.tracks || [];
 
   return (
     <div>
@@ -138,6 +140,46 @@ export default function Home() {
           </Reveal>
         )}
       </section>
+
+      {/* goals */}
+      {tracks.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
+          <div className="mb-8">
+            <h2 className="section-title">What do you want to do?</h2>
+            <p className="text-muted mt-2">
+              Pick a destination, not a subject. Each goal maps onto the mathematics it actually needs.
+            </p>
+          </div>
+          <Reveal>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+              {tracks.map((track) => (
+                <Link
+                  key={track.id}
+                  to="/roadmaps/new"
+                  state={{ trackSlug: track.slug }}
+                  className="card card-hover p-5 flex flex-col group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: `${track.color}1f`, color: track.color }}
+                    >
+                      <Icon name={track.icon || 'target'} size={20} />
+                    </span>
+                    <Icon name="arrowRight" size={18} className="text-muted group-hover:text-brand-500 group-hover:translate-x-0.5 transition" />
+                  </div>
+                  <h3 className="font-semibold mt-3 group-hover:text-brand-600 dark:group-hover:text-brand-300">{track.name}</h3>
+                  <p className="text-sm text-muted mt-1 flex-1">{track.tagline}</p>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <span className="badge bg-sunken text-muted">{track.topic_count} concepts</span>
+                    <span className="badge bg-sunken text-muted">{track.branch_count} branches</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
+        </section>
+      )}
 
       {/* how it works */}
       <section className="border-y border-line bg-sunken/50">

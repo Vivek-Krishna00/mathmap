@@ -26,6 +26,7 @@ export default function RoadmapWizard() {
   const [previewError, setPreviewError] = useState(null);
   const [form, setForm] = useState({
     branchSlugs: [],
+    trackIds: [],
     level: 'beginner',
     length: 'medium',
     goal: '',
@@ -33,10 +34,25 @@ export default function RoadmapWizard() {
   });
 
   const { data: branchData } = useFetch(() => api('/branches'), []);
+  const { data: trackData } = useFetch(() => api('/tracks'), []);
   const { data: tagData } = useFetch(() => api('/topics/tags'), []);
   const branches = branchData?.branches || [];
+  const tracks = trackData?.tracks || [];
 
   const update = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const presetTrackSlug = location.state?.trackSlug || null;
+  const [appliedTrack, setAppliedTrack] = useState(false);
+
+  useEffect(() => {
+    if (!presetTrackSlug || appliedTrack || tracks.length === 0) return;
+    const match = tracks.find((t) => t.slug === presetTrackSlug);
+    if (match) {
+      setForm((prev) => ({ ...prev, trackIds: [match.id] }));
+      setStep(1);
+    }
+    setAppliedTrack(true);
+  }, [presetTrackSlug, appliedTrack, tracks]);
 
   // Apply a placement result once the branch list is available: it sets the level,
   // preselects the branches they scored in, and seeds the interest tags.
@@ -62,13 +78,21 @@ export default function RoadmapWizard() {
 
   const payload = () => ({
     branchIds: selectedBranchIds,
+    trackIds: form.trackIds,
     level: form.level,
     length: form.length,
     goal: form.goal,
     interestTags: form.interestTags,
   });
 
-  const canContinue = step !== 0 || form.branchSlugs.length > 0;
+  const canContinue = step !== 0 || form.branchSlugs.length > 0 || form.trackIds.length > 0;
+
+  const toggleTrack = (trackId) =>
+    update({
+      trackIds: form.trackIds.includes(trackId)
+        ? form.trackIds.filter((id) => id !== trackId)
+        : [...form.trackIds, trackId],
+    });
 
   const toggleBranch = (slug) =>
     update({
@@ -116,6 +140,21 @@ export default function RoadmapWizard() {
       </header>
 
       {/* stepper */}
+      {form.trackIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Goal{form.trackIds.length > 1 ? 's' : ''}
+          </span>
+          {tracks
+            .filter((track) => form.trackIds.includes(track.id))
+            .map((track) => (
+              <span key={track.id} className="badge bg-brand-600/10 text-brand-700 dark:text-brand-300">
+                <Icon name={track.icon || 'target'} size={12} /> {track.name}
+              </span>
+            ))}
+        </div>
+      )}
+
       {placement && appliedPlacement && (
         <div className="card p-4 mb-6 flex items-start gap-3">
           <Icon name="checkCircle" size={18} className="text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
@@ -154,8 +193,46 @@ export default function RoadmapWizard() {
       <Card className="p-6 sm:p-8">
         {step === 0 && (
           <div className="animate-fade-up">
-            <h2 className="text-xl font-semibold">Which branches interest you?</h2>
-            <p className="text-muted text-sm mt-1.5">Pick one or more. We&apos;ll blend them into a single connected path.</p>
+            <h2 className="text-xl font-semibold">What do you want to do?</h2>
+            <p className="text-muted text-sm mt-1.5">
+              Pick a goal and we&apos;ll pull in the mathematics it actually needs.
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+              {tracks.map((track) => {
+                const active = form.trackIds.includes(track.id);
+                return (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => toggleTrack(track.id)}
+                    className={cx(
+                      'flex items-start gap-3 rounded-2xl border p-4 text-left transition',
+                      active ? 'border-brand-500 bg-brand-500/5' : 'border-line hover:border-brand-400/60',
+                    )}
+                  >
+                    <span
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: `${track.color}1f`, color: track.color }}
+                    >
+                      <Icon name={track.icon || 'target'} size={20} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="font-semibold">{track.name}</span>
+                        {active && <Icon name="checkCircle" size={18} className="text-brand-500" />}
+                      </span>
+                      <span className="block text-xs text-muted mt-1">{track.tagline}</span>
+                      <span className="block text-[11px] text-muted mt-1.5">
+                        {track.topic_count} concepts · {track.branch_count} branches
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <h2 className="text-xl font-semibold mt-10">Or study a subject</h2>
+            <p className="text-muted text-sm mt-1.5">Prefer to choose the branches yourself? Pick them here.</p>
             <div className="grid sm:grid-cols-2 gap-4 mt-6">
               {branches.map((branch, i) => {
                 const active = form.branchSlugs.includes(branch.slug);
@@ -332,8 +409,8 @@ export default function RoadmapWizard() {
         </div>
       </Card>
 
-      {step === 0 && form.branchSlugs.length === 0 && (
-        <p className="text-sm text-muted mt-4 text-center">Select at least one branch to continue.</p>
+      {step === 0 && form.branchSlugs.length === 0 && form.trackIds.length === 0 && (
+        <p className="text-sm text-muted mt-4 text-center">Select a goal or a subject to continue.</p>
       )}
     </div>
   );

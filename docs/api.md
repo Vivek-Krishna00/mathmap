@@ -24,6 +24,17 @@ Errors are returned as `{ "error": "message" }` with an appropriate status code
 
 Passwords must contain a letter and a number and be at least 8 characters.
 
+## Tracks (applied goals)
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/tracks` | – | The nine applied goals, each with `topic_count` and `branch_count`. |
+
+A track is a real-world destination mapped onto the existing maths graph rather than a separate
+curriculum, so the same 66 concepts serve every goal. Pass `trackIds` when generating a roadmap and the
+engine restricts candidates to the track's concepts (plus their prerequisites), scores them higher, and
+titles the roadmap after the goal.
+
 ## Catalog
 
 | Method | Path | Auth | Description |
@@ -103,6 +114,7 @@ Generation request body:
 ```json
 {
   "branchIds": [1, 2],
+  "trackIds": [],
   "level": "beginner",
   "goal": "understand matrices and eigenvalues for machine learning",
   "interestTags": ["matrices", "eigenvalues"],
@@ -110,8 +122,12 @@ Generation request body:
 }
 ```
 
+`trackIds` (goal tracks) and `branchIds` (subjects) can be combined; a topic qualifies as a candidate if
+it belongs to a chosen branch **or** is listed in a chosen goal. Topics from a chosen goal also receive
+a scoring bonus, so the resulting path leans toward what the goal actually needs.
+
 Response `meta` includes `candidateCount`, `selectedCount`, `requestedLength`, `averageDifficulty`,
-`branchBreakdown`, `coverageByType`, `resourceCount` and `totalMinutes`.
+`branchBreakdown`, `coverageByType`, `resourceCount`, `totalMinutes` and `fromGoalTrack`.
 
 ## Notes & bookmarks — requires a signed-in user
 

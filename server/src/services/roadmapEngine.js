@@ -50,6 +50,7 @@ function clampLength(length) {
 function normalizeInput(input = {}) {
   return {
     branchIds: Array.isArray(input.branchIds) ? input.branchIds.map(Number).filter(Number.isFinite) : [],
+    trackIds: Array.isArray(input.trackIds) ? input.trackIds.map(Number).filter(Number.isFinite) : [],
     level: LEVELS.includes(input.level) ? input.level : 'beginner',
     goal: String(input.goal || '').trim(),
     interestTags: Array.isArray(input.interestTags)
@@ -106,13 +107,15 @@ export function pickDiverseResources(list, max = MAX_RESOURCES_PER_TOPIC) {
 }
 
 function scoreTopic(topic, ctx) {
-  const { branchIdSet, interestSet, goalTokens, targetLevel, maxTopicVotes } = ctx;
+  const { branchIdSet, interestSet, goalTokens, targetLevel, maxTopicVotes, trackTopicIds } = ctx;
 
   const topicTags = (topic.tags || []).map(normalizeText);
   const matchedTags = topicTags.filter((t) => interestSet.has(t));
   const tagOverlap = matchedTags.length;
 
   const branchMatch = branchIdSet.size === 0 || branchIdSet.has(Number(topic.branch_id)) ? 1 : 0;
+  // Being explicitly listed in a chosen goal track is a strong signal.
+  const trackMatch = trackTopicIds && trackTopicIds.has(Number(topic.id)) ? 1 : 0;
 
   const netVotes = Number(ctx.topicVotes.get(Number(topic.id)) || 0);
   const communitySignal = maxTopicVotes > 0 ? Math.max(0, netVotes) / maxTopicVotes : 0;
@@ -126,11 +129,12 @@ function scoreTopic(topic, ctx) {
   const score =
     3 * tagOverlap +
     2 * branchMatch +
+    2.5 * trackMatch +
     1.5 * communitySignal -
     2 * difficultyPenalty +
     1.5 * goalBonus;
 
-  return { score, tagOverlap, branchMatch, communitySignal, difficultyPenalty, matchedTags, matchedGoal };
+  return { score, tagOverlap, trackMatch, branchMatch, communitySignal, difficultyPenalty, matchedTags, matchedGoal };
 }
 
 /**
@@ -153,6 +157,20 @@ export function generateRoadmap(input, data) {
   const goalTokens = tokenizeGoal(opts.goal);
   const targetLevel = LEVEL_TARGET[opts.level];
 
+  // Goal tracks: a curated set of concepts that serves a real-world destination.
+  const trackIdSet = new Set(opts.trackIds);
+  const trackNameById = new Map((data?.tracks || []).map((t) => [Number(t.id), t.name]));
+  const trackTopicIds = new Set();
+  const trackForTopic = new Map();
+  for (const link of data?.trackTopics || []) {
+    if (!trackIdSet.has(Number(link.track_id))) continue;
+    const topicId = Number(link.topic_id);
+    trackTopicIds.add(topicId);
+    if (!trackForTopic.has(topicId)) {
+      trackForTopic.set(topicId, trackNameById.get(Number(link.track_id)) || null);
+    }
+  }
+
   // Community signal per topic = sum of its approved resources' net votes.
   const topicVotes = new Map();
   let maxTopicVotes = 0;
@@ -162,17 +180,21 @@ export function generateRoadmap(input, data) {
     maxTopicVotes = Math.max(maxTopicVotes, sum);
   }
 
-  const candidates = topics.filter(
-    (t) => branchIdSet.size === 0 || branchIdSet.has(Number(t.branch_id)),
-  );
+  // Candidates: a chosen branch, or a concept listed in a chosen goal track.
+  const hasFilter = branchIdSet.size > 0 || trackIdSet.size > 0;
+  const candidates = topics.filter((t) => {
+    if (!hasFilter) return true;
+    if (branchIdSet.has(Number(t.branch_id))) return true;
+    return trackTopicIds.has(Number(t.id));
+  });
 
   if (candidates.length === 0) {
-    return emptyRoadmap(opts, 'No topics matched your selected branches yet.');
+    return emptyRoadmap(opts, 'No topics matched your selected branches or goals yet.', trackNameById);
   }
 
   const scored = candidates.map((topic) => ({
     topic,
-    ...scoreTopic(topic, { branchIdSet, interestSet, goalTokens, targetLevel, maxTopicVotes, topicVotes }),
+    ...scoreTopic(topic, { branchIdSet, interestSet, goalTokens, targetLevel, maxTopicVotes, topicVotes, trackTopicIds }),
   }));
 
   const byScore = (a, b) =>
@@ -232,6 +254,10 @@ export function generateRoadmap(input, data) {
     const info = scoreById.get(id);
     const resources = pickDiverseResources(resourcesByTopic.get(id) || []);
     const reasons = [];
+    if (info?.trackMatch) {
+      const trackName = trackForTopic.get(id);
+      if (trackName) reasons.push(`Core for ${trackName}`);
+    }
     if (info?.matchedTags?.length) reasons.push(`Matches your interest: ${info.matchedTags.join(', ')}`);
     if (info?.matchedGoal?.length) reasons.push(`Relevant to your goal (${info.matchedGoal.join(', ')})`);
     if (!seedSet.has(id)) reasons.push('Foundational prerequisite');
@@ -267,11 +293,12 @@ export function generateRoadmap(input, data) {
   }
 
   return {
-    title: buildTitle(opts, branchNameById),
+    title: buildTitle(opts, branchNameById, trackNameById),
     goal: opts.goal,
     level: opts.level,
     length: opts.length,
     branchIds: opts.branchIds,
+    trackIds: opts.trackIds,
     interestTags: opts.interestTags,
     items,
     meta: {
@@ -283,11 +310,17 @@ export function generateRoadmap(input, data) {
       coverageByType,
       resourceCount: items.reduce((acc, i) => acc + i.resources.length, 0),
       totalMinutes: items.reduce((acc, i) => acc + Number(i.topic.est_minutes || 0), 0),
+      fromGoalTrack: items.filter((i) => trackTopicIds.has(Number(i.topic.id))).length,
     },
   };
 }
 
-function buildTitle(opts, branchNameById) {
+function buildTitle(opts, branchNameById, trackNameById = new Map()) {
+  // A goal track is a better title than the subjects it happens to touch.
+  const trackNames = opts.trackIds.map((id) => trackNameById.get(Number(id))).filter(Boolean);
+  if (trackNames.length === 1) return `${trackNames[0]} Roadmap`;
+  if (trackNames.length > 1) return `${trackNames[0]} + ${trackNames.length - 1} more Roadmap`;
+
   const names = opts.branchIds.map((id) => branchNameById.get(Number(id))).filter(Boolean);
   if (names.length === 0) return 'My Mathematics Roadmap';
   if (names.length === 1) return `${names[0]} Roadmap`;
@@ -295,13 +328,14 @@ function buildTitle(opts, branchNameById) {
   return `${names[0]} + ${names.length - 1} more Roadmap`;
 }
 
-function emptyRoadmap(opts, message) {
+function emptyRoadmap(opts, message, trackNameById = new Map()) {
   return {
-    title: buildTitle(opts, new Map()),
+    title: buildTitle(opts, new Map(), trackNameById),
     goal: opts.goal,
     level: opts.level,
     length: opts.length,
     branchIds: opts.branchIds,
+    trackIds: opts.trackIds,
     interestTags: opts.interestTags,
     items: [],
     meta: {

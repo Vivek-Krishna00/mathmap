@@ -59,6 +59,22 @@ export async function getBranchBySlug(slug) {
 }
 
 // ---------------------------------------------------------------------------
+// Tracks (applied goals)
+// ---------------------------------------------------------------------------
+export function listTracks() {
+  return many(`
+    SELECT t.id, t.slug, t.name, t.tagline, t.description, t.icon, t.color, t.sort_order,
+           count(tt.topic_id)::int AS topic_count,
+           count(DISTINCT tp.branch_id)::int AS branch_count
+    FROM tracks t
+    LEFT JOIN track_topics tt ON tt.track_id = t.id
+    LEFT JOIN topics tp ON tp.id = tt.topic_id
+    GROUP BY t.id
+    ORDER BY t.sort_order, t.name
+  `);
+}
+
+// ---------------------------------------------------------------------------
 // Topics
 // ---------------------------------------------------------------------------
 export async function listTopics({ branch, search, tag, difficulty, limit = 100, offset = 0 } = {}) {
@@ -309,7 +325,7 @@ export async function getCommunityStats() {
 
 /** Everything the roadmap engine needs, in one round trip each. */
 export async function loadEngineData() {
-  const [topics, prerequisites, resources, branches] = await Promise.all([
+  const [topics, prerequisites, resources, branches, tracks, trackTopics] = await Promise.all([
     many(`SELECT id, branch_id, slug, title, summary, difficulty_level, tags, est_minutes FROM topics`),
     many(`SELECT topic_id, prerequisite_topic_id FROM topic_prerequisites`),
     many(`
@@ -320,6 +336,8 @@ export async function loadEngineData() {
       WHERE r.status = 'approved'
     `),
     many(`SELECT id, slug, name, color FROM branches`),
+    many(`SELECT id, slug, name, color FROM tracks`),
+    many(`SELECT track_id, topic_id FROM track_topics`),
   ]);
-  return { topics, prerequisites, resources, branches };
+  return { topics, prerequisites, resources, branches, tracks, trackTopics };
 }

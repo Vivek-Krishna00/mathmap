@@ -8,6 +8,7 @@ import { rateLimit } from './middleware/rateLimit.js';
 
 import authRoutes from './routes/auth.routes.js';
 import branchRoutes from './routes/branches.routes.js';
+import trackRoutes from './routes/tracks.routes.js';
 import topicRoutes from './routes/topics.routes.js';
 import graphRoutes from './routes/graph.routes.js';
 import resourceRoutes from './routes/resources.routes.js';
@@ -53,6 +54,7 @@ export function createApp() {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/branches', branchRoutes);
+  app.use('/api/tracks', trackRoutes);
   app.use('/api/topics', topicRoutes);
   app.use('/api/graph', graphRoutes);
   app.use('/api/resources', resourceRoutes);

@@ -44,6 +44,8 @@ DROP TABLE IF EXISTS roadmaps CASCADE;
 DROP TABLE IF EXISTS problems CASCADE;
 DROP TABLE IF EXISTS placement_questions CASCADE;
 DROP TABLE IF EXISTS topic_notes CASCADE;
+DROP TABLE IF EXISTS track_topics CASCADE;
+DROP TABLE IF EXISTS tracks CASCADE;
 DROP TABLE IF EXISTS resource_votes CASCADE;
 DROP TABLE IF EXISTS resource_topics CASCADE;
 DROP TABLE IF EXISTS resources CASCADE;
@@ -136,6 +138,26 @@ CREATE TABLE problems (
   created_at       TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
+-- Applied goals. A track is a real-world destination (cryptography, game dev, MLOps)
+-- mapped onto the existing maths graph, so the same 66 concepts serve many goals
+-- without duplicating content.
+CREATE TABLE tracks (
+  id          SERIAL PRIMARY KEY,
+  slug        TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  tagline     TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  icon        TEXT NOT NULL DEFAULT 'target',
+  color       TEXT NOT NULL DEFAULT '#1B4F8F',
+  sort_order  INT  NOT NULL DEFAULT 0
+);
+
+CREATE TABLE track_topics (
+  track_id INT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+  topic_id INT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  PRIMARY KEY (track_id, topic_id)
+);
+
 -- Multiple-choice questions used by the placement self-check to infer a learner's
 -- current level and interests, instead of making them guess their own ability.
 CREATE TABLE placement_questions (
@@ -157,6 +179,7 @@ CREATE TABLE roadmaps (
   goal          TEXT         NOT NULL DEFAULT '',
   level         difficulty   NOT NULL DEFAULT 'beginner',
   branch_ids    INT[]        NOT NULL DEFAULT '{}',
+  track_ids     INT[]        NOT NULL DEFAULT '{}',
   interest_tags TEXT[]       NOT NULL DEFAULT '{}',
   length        TEXT         NOT NULL DEFAULT 'medium',
   is_saved      BOOLEAN      NOT NULL DEFAULT true,
@@ -212,6 +235,7 @@ CREATE INDEX idx_resource_votes_res     ON resource_votes(resource_id);
 CREATE INDEX idx_problems_topic         ON problems(topic_id);
 CREATE INDEX idx_problems_status        ON problems(status);
 CREATE INDEX idx_placement_branch       ON placement_questions(branch_id);
+CREATE INDEX idx_track_topics_topic      ON track_topics(topic_id);
 CREATE INDEX idx_roadmaps_user          ON roadmaps(user_id);
 CREATE INDEX idx_roadmap_items_roadmap  ON roadmap_items(roadmap_id);
 CREATE INDEX idx_topic_notes_user       ON topic_notes(user_id);

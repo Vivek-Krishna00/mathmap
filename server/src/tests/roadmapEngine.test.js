@@ -99,3 +99,51 @@ test('empty candidate set returns an empty roadmap with a message', () => {
   assert.equal(rm.items.length, 0);
   assert.ok(typeof rm.meta.message === 'string');
 });
+
+// ---------------------------------------------------------------- goal tracks
+
+const WITH_TRACKS = {
+  ...CHAIN,
+  tracks: [{ id: 1, slug: 'ml', name: 'Machine Learning & AI' }],
+  trackTopics: [
+    { track_id: 1, topic_id: 4 },
+    { track_id: 1, topic_id: 5 },
+  ],
+};
+
+test('a goal track selects its concepts and closes over their prerequisites', () => {
+  const rm = generateRoadmap(
+    { branchIds: [], trackIds: [1], level: 'beginner', interestTags: [], length: 'long' },
+    WITH_TRACKS,
+  );
+  const ids = rm.items.map((i) => i.topic.id);
+  assert.ok(ids.includes(4), 'track concept 4 included');
+  assert.ok(ids.includes(5), 'track concept 5 included');
+  assert.equal(ids[0], 1, 'root prerequisite still comes first');
+});
+
+test('topics from the chosen goal are tagged and counted', () => {
+  const rm = generateRoadmap(
+    { branchIds: [], trackIds: [1], level: 'beginner', interestTags: [], length: 'long' },
+    WITH_TRACKS,
+  );
+  assert.equal(rm.meta.fromGoalTrack, 2);
+  const item = rm.items.find((i) => i.topic.id === 4);
+  assert.ok(item.reasons.includes('Core for Machine Learning & AI'));
+});
+
+test('without a track there is no goal match', () => {
+  const rm = generateRoadmap(
+    { branchIds: [1, 2], level: 'beginner', interestTags: [], length: 'long' },
+    WITH_TRACKS,
+  );
+  assert.equal(rm.meta.fromGoalTrack, 0);
+});
+
+test('the roadmap is titled after the goal, not the subjects it touches', () => {
+  const rm = generateRoadmap(
+    { branchIds: [1, 2], trackIds: [1], level: 'beginner', interestTags: [], length: 'short' },
+    WITH_TRACKS,
+  );
+  assert.equal(rm.title, 'Machine Learning & AI Roadmap');
+});

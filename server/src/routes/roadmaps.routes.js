@@ -19,6 +19,7 @@ const generateLimiter = rateLimit({ windowMs: 60_000, max: 40 });
 function parseInput(body = {}) {
   return {
     branchIds: v.intArray(body.branchIds, 'Branches', { required: false, max: 6 }) || [],
+    trackIds: v.intArray(body.trackIds, 'Goals', { required: false, max: 9 }) || [],
     level: v.oneOf(body.level, 'Level', LEVELS, { required: false, defaultValue: 'beginner' }),
     goal: v.str(body.goal, 'Goal', { required: false, max: 300 }) || '',
     interestTags: v.strArray(body.interestTags, 'Interests', { max: 30 }),
@@ -44,10 +45,10 @@ router.post('/', generateLimiter, authenticate, asyncHandler(async (req, res) =>
 
   const saved = await tx(async (client) => {
     const { rows } = await client.query(
-      `INSERT INTO roadmaps (user_id, title, goal, level, branch_ids, interest_tags, length, is_saved)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+      `INSERT INTO roadmaps (user_id, title, goal, level, branch_ids, track_ids, interest_tags, length, is_saved)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
        RETURNING *`,
-      [req.user.id, title, roadmap.goal, roadmap.level, roadmap.branchIds, roadmap.interestTags, roadmap.length],
+      [req.user.id, title, roadmap.goal, roadmap.level, roadmap.branchIds, roadmap.trackIds, roadmap.interestTags, roadmap.length],
     );
     const rm = rows[0];
     for (const item of roadmap.items) {
