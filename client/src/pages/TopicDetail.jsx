@@ -6,7 +6,7 @@ import ResourceCard from '../components/ResourceCard.jsx';
 import ProblemCard from '../components/ProblemCard.jsx';
 import TopicNotes from '../components/TopicNotes.jsx';
 import { Icon } from '../components/icons.jsx';
-import { Button, DifficultyPill, EmptyState, ErrorState, Loading, Tabs, cx } from '../components/ui.jsx';
+import { Button, DifficultyPill, EmptyState, ErrorState, Loading, Select, Tabs, cx } from '../components/ui.jsx';
 import { formatMinutes } from '../lib/format.js';
 
 const RESOURCE_FILTERS = [
@@ -87,17 +87,17 @@ export default function TopicDetail() {
 
           {tab === 'resources' && (
             <div className="mt-5">
-              <div className="flex flex-wrap gap-2 mb-4">
-                {RESOURCE_FILTERS.map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onClick={() => setFilter(f.value)}
-                    className={cx('chip', filter === f.value && 'chip-active')}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              {/* one quiet control instead of a row of six filter chips */}
+              <div className="flex items-center gap-2 mb-4">
+                <label htmlFor="resource-type" className="text-xs text-muted">Type</label>
+                <Select
+                  id="resource-type"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="w-40 py-1.5 text-xs"
+                >
+                  {RESOURCE_FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </Select>
               </div>
               {resources.length === 0 ? (
                 <EmptyState
@@ -136,54 +136,45 @@ export default function TopicDetail() {
           <TopicNotes slug={topic.slug} />
 
           <div className="card p-5">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Icon name="arrowLeft" size={16} className="text-muted" /> Prerequisites
-            </h3>
-            {topic.prerequisites.length === 0 ? (
-              <p className="text-sm text-muted mt-3">None - this is a great starting point.</p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {topic.prerequisites.map((p) => (
-                  <li key={p.id}>
-                    <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1.5 hover:bg-sunken">
-                      <span>{p.title}</span>
-                      <span className="text-xs text-muted">L{p.difficulty_level}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+            <h3 className="font-semibold">Connects to</h3>
+
+            <div className="mt-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Needs first</h4>
+              {topic.prerequisites.length === 0 ? (
+                <p className="text-sm text-muted mt-1.5">Nothing — a good starting point.</p>
+              ) : (
+                <ul className="mt-1.5 space-y-0.5">
+                  {topic.prerequisites.map((p) => (
+                    <li key={p.id}>
+                      <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-sunken">
+                        <span className="truncate">{p.title}</span>
+                        <span className="text-xs text-muted shrink-0">L{p.difficulty_level}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {topic.dependents.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Unlocks</h4>
+                <ul className="mt-1.5 space-y-0.5">
+                  {topic.dependents.map((p) => (
+                    <li key={p.id}>
+                      <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-sunken">
+                        <span className="truncate">{p.title}</span>
+                        <span className="text-xs text-muted shrink-0">L{p.difficulty_level}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
-          </div>
 
-          {topic.dependents.length > 0 && (
-            <div className="card p-5">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Icon name="arrowRight" size={16} className="text-muted" /> Leads to
-              </h3>
-              <ul className="mt-3 space-y-2">
-                {topic.dependents.map((p) => (
-                  <li key={p.id}>
-                    <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1.5 hover:bg-sunken">
-                      <span>{p.title}</span>
-                      <span className="text-xs text-muted">L{p.difficulty_level}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="card p-5">
-            <h3 className="font-semibold">Put it in context</h3>
-            <p className="text-sm text-muted mt-2">See how this concept connects to the rest of the graph.</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <Button variant="secondary" size="sm" className="w-full" as={Link} to={`/graph?trace=${topic.slug}`}>
-                <Icon name="route" size={15} /> Trace its prerequisites
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full" as={Link} to="/graph">
-                <Icon name="nodes" size={15} /> Show in concept map
-              </Button>
-            </div>
+            <Link to={`/graph?trace=${topic.slug}`} className="link text-sm inline-flex items-center gap-1.5 mt-4">
+              <Icon name="route" size={14} /> Trace its prerequisites
+            </Link>
           </div>
         </aside>
       </div>

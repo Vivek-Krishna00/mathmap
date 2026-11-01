@@ -249,6 +249,13 @@
     break-inside: avoid;
   }
 
+  /* Scroll-reveal leaves below-the-fold content at opacity 0, so printing or
+     capturing a full page would otherwise come out blank. */
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
   a {
     text-decoration: none;
     color: #000 !important;

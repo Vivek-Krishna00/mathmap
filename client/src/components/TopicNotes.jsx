@@ -23,6 +23,7 @@ export default function TopicNotes({ slug }) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const savedTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(savedTimer.current), []);
@@ -128,33 +129,51 @@ export default function TopicNotes({ slug }) {
         </button>
       </div>
 
-      <Textarea
-        className="mt-3"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="What clicked? What do you want to revisit?"
-        maxLength={4000}
-        aria-label="Your note for this topic"
-        aria-describedby={`note-status-${slug}`}
-      />
+      {/* Collapsed by default: the editor only appears when you actually want it. */}
+      {expanded ? (
+        <>
+          <Textarea
+            className="mt-3"
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="What clicked? What do you want to revisit?"
+            maxLength={4000}
+            aria-label="Your note for this topic"
+            aria-describedby={`note-status-${slug}`}
+          />
 
-      <div className="flex items-center justify-between gap-3 mt-2.5">
-        <span
-          id={`note-status-${slug}`}
-          role="status"
-          aria-live="polite"
-          className="inline-flex items-center gap-1.5 text-xs min-w-0"
-        >
-          {cue}
-        </span>
+          <div className="flex items-center justify-between gap-3 mt-2.5">
+            <span
+              id={`note-status-${slug}`}
+              role="status"
+              aria-live="polite"
+              className="inline-flex items-center gap-1.5 text-xs min-w-0"
+            >
+              {cue}
+            </span>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] text-muted tabular-nums">{draft.length}/4000</span>
-          <Button size="sm" onClick={() => save({ body: draft })} disabled={saving || !dirty}>
-            {saving ? 'Saving…' : 'Save note'}
-          </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-muted tabular-nums">{draft.length}/4000</span>
+              <Button size="sm" onClick={() => save({ body: draft })} disabled={saving || !dirty}>
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setExpanded(false)}>Done</Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="mt-3">
+          {note.body ? (
+            <p className="text-sm text-muted line-clamp-3 whitespace-pre-line">{note.body}</p>
+          ) : (
+            <p className="text-sm text-muted">No note yet.</p>
+          )}
+          <button type="button" onClick={() => setExpanded(true)} className="link text-sm mt-2">
+            {note.body ? 'Edit note' : 'Add a note'}
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

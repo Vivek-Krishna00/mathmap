@@ -101,9 +101,9 @@ export default function Dashboard() {
 
       {/* mastery */}
       {analytics.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-xl font-semibold mb-5">Mastery by branch</h2>
-          <Card className="p-6">
+        <details className="mt-12">
+          <summary className="cursor-pointer text-xl font-semibold marker:text-muted">Mastery by branch</summary>
+          <Card className="p-6 mt-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="sr-only">Completed topics per branch</caption>
@@ -138,14 +138,14 @@ export default function Dashboard() {
               </table>
             </div>
           </Card>
-        </section>
+        </details>
       )}
 
       {/* notes */}
       {notes.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-xl font-semibold mb-5">Your notes &amp; bookmarks</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
+        <details className="mt-12">
+          <summary className="cursor-pointer text-xl font-semibold marker:text-muted">Your notes &amp; bookmarks</summary>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
             {notes.map((note) => (
               <Card key={note.id} className="p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -166,7 +166,7 @@ export default function Dashboard() {
               </Card>
             ))}
           </div>
-        </section>
+        </details>
       )}
 
       <section className="mt-12">

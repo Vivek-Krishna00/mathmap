@@ -2,16 +2,9 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { useReveal } from '../hooks/motion.js';
-import BranchCard from '../components/BranchCard.jsx';
 import { Icon } from '../components/icons.jsx';
-import { Button, Card, Loading, Stat, TypeBadge, cx } from '../components/ui.jsx';
+import { Button, Card, Loading, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const STEPS = [
-  { icon: 'target', title: 'Tell us your goal', body: 'Pick the branches you care about, your level and the ideas you find interesting.' },
-  { icon: 'route', title: 'Get a personal roadmap', body: 'We order concepts by their prerequisites and attach a diverse mix of resources.' },
-  { icon: 'sparkles', title: 'Learn and give back', body: 'Track progress, then contribute the resources and problems that helped you.' },
-];
 
 function Reveal({ children, className = '' }) {
   const { ref, shown } = useReveal();
@@ -69,7 +62,7 @@ export default function Home() {
     <div>
       {/* hero */}
       <section className="relative overflow-hidden border-b border-line bg-sunken/40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-16 pb-20 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-20 pb-24 grid lg:grid-cols-2 gap-12 items-center">
           <div className="animate-fade-up">
             <span className="badge bg-brand-600/10 text-brand-700 dark:text-brand-300">
               <Icon name="sparkles" size={13} /> Community-driven mathematics
@@ -80,8 +73,8 @@ export default function Home() {
               mapped to <span className="text-brand-600 dark:text-brand-400">you</span>.
             </h1>
             <p className="mt-5 text-lg text-muted max-w-xl">
-              Stop hunting across a dozen sites. Tell MathMap what you want to learn and get a personalized
-              roadmap - ordered by prerequisites, filled with videos, articles, interactive tools and problems.
+              Tell MathMap what you want to do and get a roadmap ordered by what you need first —
+              with the videos, articles, simulations and problems that make it click.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" as={Link} to="/roadmaps/new">
@@ -103,77 +96,45 @@ export default function Home() {
         </div>
       </section>
 
-      {/* stats */}
+      {/* one quiet line instead of four stat cards */}
       {stats && (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-12">
-          <Reveal>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Stat label="Concepts mapped" value={stats.topics} icon="nodes" />
-              <Stat label="Curated resources" value={stats.resources} icon="layers" />
-              <Stat label="Practice problems" value={stats.problems} icon="puzzle" />
-              <Stat label="Community members" value={stats.members} icon="users" />
-            </div>
-          </Reveal>
-        </section>
+        <p className="mx-auto max-w-7xl px-4 sm:px-6 pt-10 text-sm text-muted">
+          {stats.topics} concepts · {stats.resources} curated resources · {stats.problems} problems ·{' '}
+          {stats.members} members
+        </p>
       )}
 
-      {/* branches */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
-        <div className="flex items-end justify-between gap-4 mb-8">
-          <div>
-            <h2 className="section-title">Explore the six branches</h2>
-            <p className="text-muted mt-2">Each branch is a graph of concepts connected by their prerequisites.</p>
-          </div>
-          <Link to="/graph" className="hidden sm:inline-flex link items-center gap-1.5">
-            View concept map <Icon name="arrowRight" size={16} />
-          </Link>
-        </div>
-        {branchesLoading ? (
-          <Loading label="Loading branches" />
-        ) : (
-          <Reveal>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger">
-              {branches.map((branch, i) => (
-                <BranchCard key={branch.id} branch={branch} index={i} />
-              ))}
-            </div>
-          </Reveal>
-        )}
-      </section>
-
-      {/* goals */}
+      {/* goals — the primary way in */}
       {tracks.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
-          <div className="mb-8">
-            <h2 className="section-title">What do you want to do?</h2>
-            <p className="text-muted mt-2">
-              Pick a destination, not a subject. Each goal maps onto the mathematics it actually needs.
-            </p>
-          </div>
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-10 pb-16">
+          <h2 className="section-title">What do you want to do?</h2>
+          <p className="text-muted mt-2 max-w-2xl">
+            Pick a destination, not a subject. Each goal maps onto the mathematics it actually needs.
+          </p>
           <Reveal>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8 stagger">
               {tracks.map((track) => (
                 <Link
                   key={track.id}
                   to="/roadmaps/new"
                   state={{ trackSlug: track.slug }}
-                  className="card card-hover p-5 flex flex-col group"
+                  className="card card-hover p-5 flex items-start gap-3 group"
                 >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: `${track.color}1f`, color: track.color }}
-                    >
-                      <Icon name={track.icon || 'target'} size={20} />
+                  <span
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${track.color}1f`, color: track.color }}
+                  >
+                    <Icon name={track.icon || 'target'} size={20} />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-semibold group-hover:text-brand-600 dark:group-hover:text-brand-300">
+                        {track.name}
+                      </span>
+                      <Icon name="arrowRight" size={16} className="text-muted shrink-0" />
                     </span>
-                    <Icon name="arrowRight" size={18} className="text-muted group-hover:text-brand-500 group-hover:translate-x-0.5 transition" />
-                  </div>
-                  <h3 className="font-semibold mt-3 group-hover:text-brand-600 dark:group-hover:text-brand-300">{track.name}</h3>
-                  <p className="text-sm text-muted mt-1 flex-1">{track.tagline}</p>
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <span className="badge bg-sunken text-muted">{track.topic_count} concepts</span>
-                    <span className="badge bg-sunken text-muted">{track.branch_count} branches</span>
-                  </div>
+                    <span className="block text-sm text-muted mt-1">{track.tagline}</span>
+                  </span>
                 </Link>
               ))}
             </div>
@@ -181,63 +142,34 @@ export default function Home() {
         </section>
       )}
 
-      {/* how it works */}
-      <section className="border-y border-line bg-sunken/50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
-          <Reveal>
-            <h2 className="section-title text-center">How MathMap works</h2>
-            <div className="grid md:grid-cols-3 gap-6 mt-10">
-              {STEPS.map((step, i) => (
-                <Card key={step.title} className="p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="w-11 h-11 rounded-xl bg-brand-600/10 text-brand-700 dark:text-brand-300 flex items-center justify-center">
-                      <Icon name={step.icon} size={22} />
-                    </span>
-                    <span className="font-display font-bold text-3xl text-accent-600">{i + 1}</span>
-                  </div>
-                  <h3 className="font-semibold text-lg mt-4">{step.title}</h3>
-                  <p className="text-sm text-muted mt-2">{step.body}</p>
-                </Card>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* top resources */}
-      {stats?.topResources?.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
-          <div className="mb-8">
-            <h2 className="section-title">Loved by the community</h2>
-            <p className="text-muted mt-2">The most upvoted resources across all branches.</p>
+      {/* subjects — compact, secondary */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
+        <h2 className="text-xl font-semibold">Or start from a subject</h2>
+        {branchesLoading ? (
+          <Loading label="Loading subjects" />
+        ) : (
+          <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-10">
+            {branches.map((branch) => (
+              <Link
+                key={branch.id}
+                to={`/branches/${branch.slug}`}
+                className="flex items-center gap-3 py-3 border-b border-line/70 group"
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: branch.color }} aria-hidden="true" />
+                <span className="font-medium group-hover:text-brand-600 dark:group-hover:text-brand-300">
+                  {branch.name}
+                </span>
+                <span className="ml-auto text-xs text-muted">{branch.topic_count} topics</span>
+              </Link>
+            ))}
           </div>
-          <Reveal>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {stats.topResources.map((r) => (
-                <a
-                  key={r.id}
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="card card-hover p-5 flex flex-col group"
-                >
-                  <div className="flex items-center justify-between">
-                    <TypeBadge type={r.type} />
-                    <span className="badge bg-teal-600/12 text-teal-700 dark:text-teal-300">
-                      <Icon name="up" size={12} /> {r.net_votes}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold mt-3 group-hover:text-brand-600 dark:group-hover:text-brand-300">{r.title}</h3>
-                  <p className="text-xs text-muted mt-1.5 flex-1">{r.provider}</p>
-                  <span className="text-xs text-muted mt-3 inline-flex items-center gap-1.5">
-                    <Icon name="external" size={13} /> Open resource
-                  </span>
-                </a>
-              ))}
-            </div>
-          </Reveal>
-        </section>
-      )}
+        )}
+        <p className="text-sm text-muted mt-8">
+          Not sure where to start?{' '}
+          <Link className="link" to="/placement">Take the two-minute placement check</Link> and we&apos;ll suggest
+          a level and a few interests.
+        </p>
+      </section>
 
       {/* CTA */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-8">
