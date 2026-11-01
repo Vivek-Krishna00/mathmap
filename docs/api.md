@@ -91,6 +91,7 @@ Scoring is ratio-based: 0–25% correct → `beginner`, anything short of perfec
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
+| `GET` | `/shared` | – | Public gallery: every roadmap whose owner has shared it, newest first. |
 | `POST` | `/roadmaps/:id/share` | owner | Mints (or reuses) a share token and makes the roadmap public → `{ share: { shareToken, isPublic } }`. |
 | `DELETE` | `/roadmaps/:id/share` | owner | Revokes: clears the token, so the old link 404s. |
 | `GET` | `/shared/:token` | – | Public, read-only view → `{ roadmap, items, progress }`. No owner email is exposed. |

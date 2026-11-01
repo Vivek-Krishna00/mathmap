@@ -6,6 +6,21 @@ import * as v from '../lib/validate.js';
 
 const router = Router();
 
+/** Public gallery of roadmaps their owners have chosen to share. */
+router.get('/', asyncHandler(async (req, res) => {
+  const roadmaps = await many(`
+    SELECT r.share_token, r.title, r.goal, r.level, r.created_at,
+           u.name AS owner_name,
+           (SELECT count(*) FROM roadmap_items i WHERE i.roadmap_id = r.id)::int AS topic_count
+    FROM roadmaps r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.is_public = true AND r.share_token IS NOT NULL
+    ORDER BY r.created_at DESC
+    LIMIT 60
+  `);
+  res.json({ roadmaps });
+}));
+
 /**
  * Public read-only view of a shared roadmap. No authentication: the token is the
  * capability. Revoked (is_public = false) roadmaps are indistinguishable from

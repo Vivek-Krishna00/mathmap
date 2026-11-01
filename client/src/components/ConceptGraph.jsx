@@ -86,7 +86,7 @@ const STATE_LABEL = {
   not_started: 'not started',
 };
 
-export default function ConceptGraph({ nodes = [], edges = [], onSelect, progress = null }) {
+export default function ConceptGraph({ nodes = [], edges = [], onSelect, progress = null, trace = null }) {
   const [hovered, setHovered] = useState(null);
   const [zoom, setZoom] = useState(1);
 
@@ -99,6 +99,10 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
     [progress],
   );
   const dueTopics = useMemo(() => new Set(progress?.dueTopics || []), [progress]);
+
+  // When a trace is active, only that prerequisite chain stays lit.
+  const traceChain = trace?.chain || null;
+  const traceCenterId = trace?.centerId ?? null;
 
   const neighbours = useMemo(() => {
     if (!hovered) return null;
@@ -159,6 +163,26 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
               && stateByTopic[e.sourceId] === 'completed'
               && stateByTopic[e.targetId] === 'completed'
               && orderIndex[e.sourceId] < orderIndex[e.targetId];
+
+            let stroke = 'rgb(var(--c-muted))';
+            let strokeWidth = active ? 2.4 : 1.3;
+            let strokeOpacity = neighbours && !active ? 0.15 : active ? 0.85 : 0.4;
+
+            if (traceChain) {
+              const onChain = traceChain.has(e.sourceId) && traceChain.has(e.targetId);
+              stroke = onChain ? '#1B4F8F' : 'rgb(var(--c-muted))';
+              strokeWidth = onChain ? 2.2 : 1.1;
+              strokeOpacity = onChain ? 0.9 : 0.08;
+            } else if (isViolation) {
+              stroke = '#B5495B';
+              strokeWidth = 2.4;
+              strokeOpacity = 0.9;
+            } else if (travelled) {
+              stroke = '#177F73';
+              strokeWidth = 2;
+              strokeOpacity = 0.9;
+            }
+
             return (
               <path
                 key={e.key}
@@ -167,9 +191,9 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
                 pathLength={1}
                 d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`}
                 fill="none"
-                stroke={isViolation ? '#B5495B' : travelled ? '#177F73' : 'rgb(var(--c-muted))'}
-                strokeWidth={isViolation ? 2.4 : travelled ? 2 : active ? 2.4 : 1.3}
-                opacity={neighbours && !active ? 0.15 : isViolation || travelled ? 0.9 : active ? 0.85 : 0.4}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                opacity={strokeOpacity}
                 markerEnd="url(#mm-arrow)"
               />
             );
@@ -178,8 +202,11 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
           {nodes.map((node) => {
             const pos = positions.get(node.id);
             if (!pos) return null;
-            const dim = neighbours && !neighbours.has(node.id);
+            const dim = traceChain
+              ? !traceChain.has(node.id)
+              : Boolean(neighbours && !neighbours.has(node.id));
             const isHovered = hovered === node.id;
+            const isTraceCenter = traceCenterId === node.id;
             const state = stateByTopic?.[node.id] || 'not_started';
             const step = orderIndex?.[node.id];
             const isDue = dueTopics.has(node.id);
@@ -215,8 +242,8 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
                     height={NODE_H}
                     rx={11}
                     fill={showState ? STATE_FILL[state] : 'rgb(var(--c-surface))'}
-                    stroke={isHovered ? node.branch_color : isDue ? '#B4761A' : 'rgb(var(--c-line))'}
-                    strokeWidth={isHovered || isDue ? 2.2 : 1}
+                    stroke={isTraceCenter ? '#1B4F8F' : isHovered ? node.branch_color : isDue ? '#B4761A' : 'rgb(var(--c-line))'}
+                    strokeWidth={isTraceCenter ? 3 : isHovered || isDue ? 2.2 : 1}
                   />
                   <rect width={5} height={NODE_H} rx={2.5} fill={node.branch_color} />
                   <text x={14} y={21} fontSize="11.5" fontWeight="600" fill="rgb(var(--c-ink))">

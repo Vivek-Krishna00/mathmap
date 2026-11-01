@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Icon } from './icons.jsx';
 import { DifficultyPill, cx } from './ui.jsx';
-import { ITEM_STATUS, RESOURCE_TYPE_ICON, RESOURCE_TYPE_LABELS, formatMinutes } from '../lib/format.js';
+import { ITEM_STATUS, RESOURCE_TYPE_ICON, RESOURCE_TYPE_LABELS, RESOURCE_TYPE_VERB, formatMinutes } from '../lib/format.js';
 
 const STATUS_TONE = {
   not_started: { dot: 'bg-sunken border-line text-muted', chip: '' },
@@ -25,7 +25,7 @@ function ResourceRow({ resource }) {
           {resource.title}
         </span>
         <span className="block text-xs text-muted mt-0.5">
-          {RESOURCE_TYPE_LABELS[resource.type]}
+          {RESOURCE_TYPE_VERB[resource.type] || RESOURCE_TYPE_LABELS[resource.type]}
           {resource.provider ? ` · ${resource.provider}` : ''}
           {resource.net_votes > 0 ? ` · ▲ ${resource.net_votes}` : ''}
         </span>

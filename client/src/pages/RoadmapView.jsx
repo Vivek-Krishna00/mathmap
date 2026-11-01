@@ -156,8 +156,9 @@ export default function RoadmapView() {
         {data.roadmap.is_public && shareUrl ? (
           <>
             <p className="text-sm text-muted">
-              Anyone with this link can view a read-only copy. It is not listed anywhere public, and you can
-              revoke it at any time.
+              Anyone with this link can view a read-only copy. Shared roadmaps are also listed in the{' '}
+              <Link to="/community" className="link">Community gallery</Link>, and you can revoke access at
+              any time.
             </p>
             <div className="flex gap-2 mt-4">
               <Input
@@ -189,8 +190,9 @@ export default function RoadmapView() {
         ) : (
           <>
             <p className="text-sm text-muted">
-              Create a read-only link you can send to a classmate, embed in a report, or print as a PDF. It shows
-              the roadmap and its resources — not your account or your progress controls.
+              Create a read-only link you can send to a classmate, embed in a report, or print as a PDF. It
+              will also appear in the Community gallery, and it shows the roadmap and its resources — not your
+              account or your progress controls.
             </p>
             <Button className="mt-4" onClick={createShare} disabled={sharing}>
               {sharing ? 'Creating…' : 'Create public link'}

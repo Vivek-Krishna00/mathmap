@@ -10,6 +10,7 @@ const NAV = [
   { to: '/explore', label: 'Explore', icon: 'compass' },
   { to: '/graph', label: 'Concept map', icon: 'nodes' },
   { to: '/problems', label: 'Problems', icon: 'puzzle' },
+  { to: '/community', label: 'Community', icon: 'users' },
   { to: '/contribute', label: 'Contribute', icon: 'sparkles' },
 ];
 

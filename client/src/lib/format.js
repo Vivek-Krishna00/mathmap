@@ -11,6 +11,18 @@ export const RESOURCE_TYPE_LABELS = {
   book: 'Book',
 };
 
+/** What the learner does with it — reads better on a resource card than a noun. */
+export const RESOURCE_TYPE_VERB = {
+  video: 'Watch',
+  article: 'Read',
+  game: 'Play',
+  simulation: 'Explore',
+  problem_set: 'Try it',
+  application: 'Try it',
+  course: 'Study',
+  book: 'Read',
+};
+
 export const RESOURCE_TYPE_ICON = {
   video: 'play',
   article: 'doc',

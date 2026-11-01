@@ -25,14 +25,15 @@ It also lets the community **contribute resources and problems**, **vote** on wh
 | **Progress tracking** | Save roadmaps, mark topics *not started / in progress / completed*, see progress bars per roadmap and aggregated stats. |
 | **Placement self-check** | 24 multiple-choice questions across the six branches infer the learner's level and interests, then prefill the roadmap wizard — so "current knowledge" is measured rather than self-declared. |
 | **Sharing & export** | A revocable, read-only public link per roadmap, plus a print stylesheet so a roadmap can be saved as a PDF for a report. |
+| **Community gallery** | A public, read-only gallery of roadmaps other learners have shared — sharing becomes discovery. |
 | **Notes & bookmarks** | Private per-topic notes and bookmarks, surfaced on the dashboard. |
 | **Review queue** | Completed topics resurface on a widening schedule — 3, 7, 16, then 35 days — with a one-click "mark reviewed". |
 | **Next steps & mastery** | "Up next" is derived from the prerequisite graph (only topics whose prerequisites are *all* completed); mastery is broken down per branch with a table alternative. |
 | **Command palette** | ⌘K / Ctrl-K fuzzy search across every concept and page. |
 | **Learning path overlay** | A "My progress" mode on the concept map: nodes coloured by your state, your completion order as numbered steps, prerequisites you crossed out of order drawn in red, and a single adherence figure. The accessible list view gains a matching column. |
 | **Goals & shared foundations** | A "Goals" mode that lays the selected branches out radially and pulls the concepts **more than one goal depends on** into the middle — so you can see that *Vectors* serves four goals. Backed by five genuine cross-branch prerequisites (regression needs matrices, estimation needs expectation, and so on). |
-| **Interactive concept map** | Hand-built SVG layered DAG with hover-to-trace, click-to-open, branch filters and zoom — keyboard navigable, with an equivalent list/table view. |
-| **Problem bank** | Curated problems with difficulty, hints and revealable solutions, filterable by branch and level. |
+| **Interactive concept map** | Hand-built SVG layered DAG with hover-to-trace, click-to-open, branch filters and zoom — keyboard navigable, traceable to a concept's **full prerequisite chain**, with an equivalent list/table view. |
+| **Problem bank** | Curated problems with difficulty, hints and revealable solutions, filterable by branch and level. Matrices render as proper matrices rather than `[[...]]` brackets. |
 | **Community contributions** | Submit resources and problems; everything enters a moderation queue. |
 | **Voting** | Up/down vote resources; the viewer's own vote is preserved and drives ranking. |
 | **Moderation** | Moderator/admin queue with approve/reject, rejection reasons and a full audit log. |

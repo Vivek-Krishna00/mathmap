@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from './icons.jsx';
+import MathText from './MathText.jsx';
 import { DifficultyPill, cx } from './ui.jsx';
 
 export default function ProblemCard({ problem, defaultOpen = false }) {
@@ -32,12 +33,12 @@ export default function ProblemCard({ problem, defaultOpen = false }) {
 
       {open && (
         <div className="mt-4 space-y-3 animate-fade-up">
-          <p className="text-sm text-ink/90 whitespace-pre-line leading-relaxed">{problem.statement}</p>
+          <p className="text-sm text-ink/90 whitespace-pre-line leading-relaxed"><MathText>{problem.statement}</MathText></p>
 
           {problem.hint && (
             <details className="rounded-xl bg-sunken/60 px-3.5 py-2.5">
               <summary className="cursor-pointer text-sm font-medium text-accent-700 dark:text-accent-300">Show hint</summary>
-              <p className="text-sm text-muted mt-2 whitespace-pre-line">{problem.hint}</p>
+              <p className="text-sm text-muted mt-2 whitespace-pre-line"><MathText>{problem.hint}</MathText></p>
             </details>
           )}
 
@@ -53,7 +54,7 @@ export default function ProblemCard({ problem, defaultOpen = false }) {
               </button>
               {showSolution && (
                 <div className="mt-3 rounded-xl border border-teal-600/30 bg-teal-600/5 px-3.5 py-3 animate-fade-up">
-                  <p className="text-sm whitespace-pre-line leading-relaxed">{problem.solution}</p>
+                  <p className="text-sm whitespace-pre-line leading-relaxed"><MathText>{problem.solution}</MathText></p>
                 </div>
               )}
             </div>

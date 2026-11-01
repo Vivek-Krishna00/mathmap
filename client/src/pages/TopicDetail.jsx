@@ -162,9 +162,14 @@ export default function TopicDetail() {
           <div className="card p-5">
             <h3 className="font-semibold">Put it in context</h3>
             <p className="text-sm text-muted mt-2">See how this concept connects to the rest of the graph.</p>
-            <Button variant="secondary" size="sm" className="mt-3 w-full" as={Link} to={`/graph?focus=${topic.slug}`}>
-              <Icon name="nodes" size={15} /> Show in concept map
-            </Button>
+            <div className="flex flex-col gap-2 mt-3">
+              <Button variant="secondary" size="sm" className="w-full" as={Link} to={`/graph?trace=${topic.slug}`}>
+                <Icon name="route" size={15} /> Trace its prerequisites
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full" as={Link} to="/graph">
+                <Icon name="nodes" size={15} /> Show in concept map
+              </Button>
+            </div>
           </div>
         </aside>
       </div>

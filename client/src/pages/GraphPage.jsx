@@ -40,7 +40,7 @@ function Tile({ label, value, tone = 'text-ink' }) {
 }
 
 export default function GraphPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
@@ -77,6 +77,38 @@ export default function GraphPage() {
     () => new Map((data?.nodes || []).map((node) => [node.id, node.title])),
     [data],
   );
+
+  // ?trace=<slug> highlights the whole prerequisite chain for one concept — every
+  // ancestor, not just the direct one, computed from the edges we already have.
+  const traceInfo = useMemo(() => {
+    const slug = params.get('trace');
+    if (!slug || !data?.nodes?.length) return null;
+    const center = data.nodes.find((node) => node.slug === slug);
+    if (!center) return null;
+
+    const parents = new Map();
+    for (const edge of data.edges) {
+      if (!parents.has(edge.topic_id)) parents.set(edge.topic_id, []);
+      parents.get(edge.topic_id).push(edge.prerequisite_topic_id);
+    }
+    const chain = new Set();
+    const stack = [center.id];
+    while (stack.length) {
+      const id = stack.pop();
+      if (chain.has(id)) continue;
+      chain.add(id);
+      for (const parent of parents.get(id) || []) {
+        if (!chain.has(parent)) stack.push(parent);
+      }
+    }
+    return { centerId: center.id, chain, title: center.title };
+  }, [params, data]);
+
+  const clearTrace = () => {
+    const next = new URLSearchParams(params);
+    next.delete('trace');
+    setParams(next, { replace: true });
+  };
 
   const summary = progress?.summary;
   // Nothing to overlay yet: either no roadmap items at all, or none started.
@@ -196,6 +228,19 @@ export default function GraphPage() {
         </>
       )}
 
+      {traceInfo && (
+        <Card className="p-4 mb-5 flex flex-wrap items-center gap-3">
+          <Icon name="route" size={16} className="text-brand-600 dark:text-brand-300" />
+          <span className="text-sm">
+            Tracing the prerequisite chain for <strong className="text-ink">{traceInfo.title}</strong> —{' '}
+            {traceInfo.chain.size} concept{traceInfo.chain.size === 1 ? '' : 's'} in total.
+          </span>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={clearTrace}>
+            Clear trace
+          </Button>
+        </Card>
+      )}
+
       {mode === 'goals' ? (
         <>
           {goalsQuery.loading && <Loading label="Working out the connections" />}
@@ -214,6 +259,7 @@ export default function GraphPage() {
               nodes={data.nodes}
               edges={data.edges}
               progress={progress}
+              trace={traceInfo}
               onSelect={(slug) => navigate(`/topics/${slug}`)}
             />
           ) : (

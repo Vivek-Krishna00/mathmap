@@ -9,6 +9,7 @@ import {
   DIFFICULTY_TONE,
   RESOURCE_TYPE_ICON,
   RESOURCE_TYPE_LABELS,
+  RESOURCE_TYPE_VERB,
 } from '../lib/format.js';
 
 export const cx = (...parts) => parts.filter(Boolean).join(' ');
@@ -52,11 +53,11 @@ export function Badge({ tone = 'bg-sunken text-muted', className, children }) {
   return <span className={cx('badge', tone, className)}>{children}</span>;
 }
 
-export function TypeBadge({ type, className }) {
+export function TypeBadge({ type, className, verb = false }) {
   return (
     <span className={cx('badge bg-brand-500/10 text-brand-700 dark:text-brand-300', className)}>
       <Icon name={RESOURCE_TYPE_ICON[type] || 'doc'} size={13} />
-      {RESOURCE_TYPE_LABELS[type] || type}
+      {verb ? RESOURCE_TYPE_VERB[type] || type : RESOURCE_TYPE_LABELS[type] || type}
     </span>
   );
 }

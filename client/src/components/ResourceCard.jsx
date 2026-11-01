@@ -63,7 +63,7 @@ export default function ResourceCard({ resource, onChange, shownTopics = true })
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <TypeBadge type={resource.type} />
+          <TypeBadge type={resource.type} verb />
           {resource.provider && <span className="text-xs text-muted">{resource.provider}</span>}
         </div>
 

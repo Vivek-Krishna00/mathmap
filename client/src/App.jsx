@@ -15,6 +15,7 @@ const GraphPage = lazy(() => import('./pages/GraphPage.jsx'));
 const RoadmapWizard = lazy(() => import('./pages/RoadmapWizard.jsx'));
 const RoadmapView = lazy(() => import('./pages/RoadmapView.jsx'));
 const SharedRoadmap = lazy(() => import('./pages/SharedRoadmap.jsx'));
+const Community = lazy(() => import('./pages/Community.jsx'));
 const Placement = lazy(() => import('./pages/Placement.jsx'));
 const Review = lazy(() => import('./pages/Review.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
@@ -52,6 +53,7 @@ export default function App() {
                 <Route path="roadmaps/:id" element={<RoadmapView />} />
                 <Route path="placement" element={<Placement />} />
                 <Route path="shared/:token" element={<SharedRoadmap />} />
+                <Route path="community" element={<Community />} />
                 <Route path="problems" element={<Problems />} />
                 <Route path="review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
                 <Route
