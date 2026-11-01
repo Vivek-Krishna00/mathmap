@@ -3,7 +3,8 @@ import { api } from '../api/client.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { useReveal } from '../hooks/motion.js';
 import { Icon } from '../components/icons.jsx';
-import { Button, Card, Loading, cx } from '../components/ui.jsx';
+import HeroGraphic from '../components/HeroGraphic.jsx';
+import { Button, Loading, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function Reveal({ children, className = '' }) {
@@ -12,40 +13,6 @@ function Reveal({ children, className = '' }) {
     <div ref={ref} className={cx('reveal', shown && 'is-shown', className)}>
       {children}
     </div>
-  );
-}
-
-function HeroPreview() {
-  const rows = [
-    { n: 1, title: 'Vectors', tone: 'text-teal-700 dark:text-teal-300', state: 'Completed' },
-    { n: 2, title: 'Matrices & matrix operations', tone: 'text-accent-700 dark:text-accent-300', state: 'In progress' },
-    { n: 3, title: 'Eigenvalues & eigenvectors', tone: 'text-muted', state: 'Next' },
-  ];
-  return (
-    <Card className="p-5 w-full max-w-sm shadow-pop animate-fade-up">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted">Your roadmap</span>
-        <span className="badge bg-brand-600/10 text-brand-700 dark:text-brand-300">Linear Algebra</span>
-      </div>
-      <ul className="mt-4 space-y-3">
-        {rows.map((r) => (
-          <li key={r.n} className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-xl bg-sunken flex items-center justify-center text-sm font-bold font-display">{r.n}</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-medium truncate">{r.title}</span>
-              <span className={`block text-xs ${r.tone}`}>{r.state}</span>
-            </span>
-            <Icon name="chevronRight" size={16} className="text-muted" />
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 pt-4 border-t border-line">
-        <div className="h-2 rounded-full bg-sunken overflow-hidden">
-          <div className="h-full w-1/3 rounded-full bg-brand-600" />
-        </div>
-        <p className="text-xs text-muted mt-2">3 of 15 topics complete</p>
-      </div>
-    </Card>
   );
 }
 
@@ -91,7 +58,7 @@ export default function Home() {
             )}
           </div>
           <div className="flex justify-center lg:justify-end">
-            <HeroPreview />
+            <HeroGraphic />
           </div>
         </div>
       </section>
