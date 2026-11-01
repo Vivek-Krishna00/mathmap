@@ -18,6 +18,7 @@ import placementRoutes from './routes/placement.routes.js';
 import notesRoutes from './routes/notes.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import insightsRoutes from './routes/insights.routes.js';
+import goalsRoutes from './routes/goals.routes.js';
 import moderationRoutes from './routes/moderation.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import statsRoutes from './routes/stats.routes.js';
@@ -62,6 +63,7 @@ export function createApp() {
   app.use('/api/notes', notesRoutes);
   app.use('/api/review', reviewRoutes);
   app.use('/api/insights', insightsRoutes);
+  app.use('/api/goals', goalsRoutes);
   app.use('/api/moderation', moderationRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/stats', statsRoutes);

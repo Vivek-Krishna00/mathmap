@@ -153,6 +153,12 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
             const mid = (x1 + x2) / 2;
             const active = neighbours ? neighbours.has(e.sourceId) && neighbours.has(e.targetId) : false;
             const isViolation = violationEdges.has(`${e.sourceId}-${e.targetId}`);
+            // The path actually walked: both ends done, in the recommended direction.
+            const travelled = Boolean(stateByTopic && orderIndex)
+              && !isViolation
+              && stateByTopic[e.sourceId] === 'completed'
+              && stateByTopic[e.targetId] === 'completed'
+              && orderIndex[e.sourceId] < orderIndex[e.targetId];
             return (
               <path
                 key={e.key}
@@ -161,9 +167,9 @@ export default function ConceptGraph({ nodes = [], edges = [], onSelect, progres
                 pathLength={1}
                 d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`}
                 fill="none"
-                stroke={isViolation ? '#B5495B' : 'rgb(var(--c-muted))'}
-                strokeWidth={isViolation ? 2.4 : active ? 2.4 : 1.3}
-                opacity={neighbours && !active ? 0.15 : isViolation ? 0.9 : active ? 0.85 : 0.4}
+                stroke={isViolation ? '#B5495B' : travelled ? '#177F73' : 'rgb(var(--c-muted))'}
+                strokeWidth={isViolation ? 2.4 : travelled ? 2 : active ? 2.4 : 1.3}
+                opacity={neighbours && !active ? 0.15 : isViolation || travelled ? 0.9 : active ? 0.85 : 0.4}
                 markerEnd="url(#mm-arrow)"
               />
             );

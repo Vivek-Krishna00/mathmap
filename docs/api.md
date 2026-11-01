@@ -150,6 +150,24 @@ and is `null` when nothing is completed rather than dividing by zero.
 prerequisites appear in the learner's completed set. With nothing completed, the root concepts are
 suggested.
 
+## Goals — public
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/goals` | How the selected branches connect. Query `branches` (comma-separated slugs); omitting it uses all six. |
+
+Returns `{ goals, bridges, bridgeCount }`.
+
+- **`goals`** — one entry per selected branch with its `roots` (topics that have no prerequisites at
+  all), i.e. where that goal starts.
+- **`bridges`** — every concept that is a **transitive prerequisite of topics in two or more selected
+  goals**, with the `goals` (branch slugs) it serves and an `unlocks` count. A shared concept is placed
+  *between* the goals it connects in the UI.
+
+This is computed from the concept DAG with a forward closure per concept, so a bridge can be indirect:
+*Vectors* is reported as serving Calculus as well as Linear Algebra, because `ca-applications` →
+`la-vectors`.
+
 ## Moderation — requires `moderator` or `admin`
 
 | Method | Path | Description |

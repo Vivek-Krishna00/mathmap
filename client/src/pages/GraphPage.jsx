@@ -4,6 +4,7 @@ import { api, qs } from '../api/client.js';
 import { useFetch } from '../hooks/useFetch.js';
 import ConceptGraph from '../components/ConceptGraph.jsx';
 import GraphList from '../components/GraphList.jsx';
+import GoalsGraph from '../components/GoalsGraph.jsx';
 import { Icon } from '../components/icons.jsx';
 import { Button, Card, EmptyState, ErrorState, Loading, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -45,7 +46,10 @@ export default function GraphPage() {
 
   const [selected, setSelected] = useState(() => (params.get('branches') || '').split(',').filter(Boolean));
   const [view, setView] = useState(params.get('view') === 'list' ? 'list' : 'graph');
-  const [mode, setMode] = useState(params.get('mode') === 'progress' ? 'progress' : 'curriculum');
+  const initialMode = params.get('mode');
+  const [mode, setMode] = useState(
+    initialMode === 'progress' || initialMode === 'goals' ? initialMode : 'curriculum',
+  );
 
   const { data: branchData } = useFetch(() => api('/branches'), []);
   const branches = branchData?.branches || [];
@@ -59,6 +63,13 @@ export default function GraphPage() {
     [showProgress],
   );
   const progress = showProgress ? progressQuery.data : null;
+
+  // Goals works for anyone, and follows the branch filter above.
+  const showGoals = mode === 'goals';
+  const goalsQuery = useFetch(
+    () => (showGoals ? api(`/goals${query}`) : Promise.resolve(null)),
+    [showGoals, query],
+  );
 
   const toggle = (slug) => setSelected((s) => (s.includes(slug) ? s.filter((x) => x !== slug) : [...s, slug]));
 
@@ -79,9 +90,11 @@ export default function GraphPage() {
         <h1 className="section-title">The mathematics concept map</h1>
         <p className="text-muted mt-2 max-w-3xl">
           Every node is a concept; every arrow points from a prerequisite to what it unlocks.
-          {showProgress
-            ? ' In progress mode the map is coloured by what you have actually done, and arrows you crossed out of order are marked in red.'
-            : ' Hover to trace connections and click a node to open it.'}
+          {mode === 'goals'
+            ? ' In goals mode each branch you picked is a hub, and the numbered concepts in the middle are the ones more than one goal depends on.'
+            : showProgress
+              ? ' In progress mode the map is coloured by what you have actually done, and arrows you crossed out of order are marked in red.'
+              : ' Hover to trace connections and click a node to open it.'}
         </p>
       </header>
 
@@ -109,27 +122,27 @@ export default function GraphPage() {
                 {data.nodes.length} concepts · {data.edges.length} prerequisites
               </span>
             )}
-            {/* What the map shows and how it is laid out are independent choices. */}
-            {isAuthenticated && (
+            <Segmented
+              label="Data shown"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: 'curriculum', label: 'Curriculum' },
+                ...(isAuthenticated ? [{ value: 'progress', label: 'My progress' }] : []),
+                { value: 'goals', label: 'Goals' },
+              ]}
+            />
+            {mode !== 'goals' && (
               <Segmented
-                label="Data shown"
-                value={mode}
-                onChange={setMode}
+                label="View mode"
+                value={view}
+                onChange={setView}
                 options={[
-                  { value: 'curriculum', label: 'Curriculum' },
-                  { value: 'progress', label: 'My progress' },
+                  { value: 'graph', label: 'Graph' },
+                  { value: 'list', label: 'List' },
                 ]}
               />
             )}
-            <Segmented
-              label="View mode"
-              value={view}
-              onChange={setView}
-              options={[
-                { value: 'graph', label: 'Graph' },
-                { value: 'list', label: 'List' },
-              ]}
-            />
           </div>
         </div>
       </Card>
@@ -183,20 +196,33 @@ export default function GraphPage() {
         </>
       )}
 
-      {loading && <Loading label="Laying out the graph" />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-
-      {!loading && !error && !nothingYet && (view === 'graph' ? (
-        <ConceptGraph
-          nodes={data.nodes}
-          edges={data.edges}
-          progress={progress}
-          onSelect={(slug) => navigate(`/topics/${slug}`)}
-        />
+      {mode === 'goals' ? (
+        <>
+          {goalsQuery.loading && <Loading label="Working out the connections" />}
+          {goalsQuery.error && <ErrorState error={goalsQuery.error} onRetry={goalsQuery.reload} />}
+          {!goalsQuery.loading && !goalsQuery.error && goalsQuery.data && (
+            <GoalsGraph goals={goalsQuery.data.goals} bridges={goalsQuery.data.bridges} />
+          )}
+        </>
       ) : (
-        <GraphList nodes={data.nodes} edges={data.edges} progress={progress} />
-      ))}
+        <>
+          {loading && <Loading label="Laying out the graph" />}
+          {error && <ErrorState error={error} onRetry={reload} />}
 
+          {!loading && !error && !nothingYet && (view === 'graph' ? (
+            <ConceptGraph
+              nodes={data.nodes}
+              edges={data.edges}
+              progress={progress}
+              onSelect={(slug) => navigate(`/topics/${slug}`)}
+            />
+          ) : (
+            <GraphList nodes={data.nodes} edges={data.edges} progress={progress} />
+          ))}
+        </>
+      )}
+
+      {mode !== 'goals' && (
       <div className="flex flex-wrap items-center gap-4 mt-5 text-sm text-muted">
         {showProgress ? (
           <>
@@ -207,6 +233,10 @@ export default function GraphPage() {
             <span className="inline-flex items-center gap-2">
               <span className="w-3 h-3 rounded" style={{ background: 'rgba(180,118,26,0.35)' }} aria-hidden="true" />
               In progress, or due for review
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3 h-0.5 rounded" style={{ background: '#177F73' }} aria-hidden="true" />
+              Studied in the recommended order
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="w-3 h-0.5 rounded" style={{ background: '#B5495B' }} aria-hidden="true" />
@@ -230,6 +260,7 @@ export default function GraphPage() {
           {view === 'graph' ? 'Switch to list view' : 'Switch to graph view'}
         </Button>
       </div>
+      )}
     </div>
   );
 }

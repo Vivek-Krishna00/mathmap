@@ -29,6 +29,7 @@ It also lets the community **contribute resources and problems**, **vote** on wh
 | **Next steps & mastery** | "Up next" is derived from the prerequisite graph (only topics whose prerequisites are *all* completed); mastery is broken down per branch with a table alternative. |
 | **Command palette** | ⌘K / Ctrl-K fuzzy search across every concept and page. |
 | **Learning path overlay** | A "My progress" mode on the concept map: nodes coloured by your state, your completion order as numbered steps, prerequisites you crossed out of order drawn in red, and a single adherence figure. The accessible list view gains a matching column. |
+| **Goals & shared foundations** | A "Goals" mode that lays the selected branches out radially and pulls the concepts **more than one goal depends on** into the middle — so you can see that *Vectors* serves four goals. Backed by five genuine cross-branch prerequisites (regression needs matrices, estimation needs expectation, and so on). |
 | **Interactive concept map** | Hand-built SVG layered DAG with hover-to-trace, click-to-open, branch filters and zoom — keyboard navigable, with an equivalent list/table view. |
 | **Problem bank** | Curated problems with difficulty, hints and revealable solutions, filterable by branch and level. |
 | **Community contributions** | Submit resources and problems; everything enters a moderation queue. |
