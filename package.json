@@ -1,0 +1,26 @@
+{
+  "name": "mathmap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MathMap - a community-driven platform that generates personalized mathematics learning roadmaps.",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed": "npm --prefix server run db:seed",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:reset": "npm run db:setup",
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test",
+    "build": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------- tokens */
+/* Blueprint: cool paper, near-black ink, deep azure. No gradients anywhere. */
+:root {
+  --c-canvas: 245 247 250;
+  --c-surface: 255 255 255;
+  --c-sunken: 238 241 245;
+  --c-ink: 13 17 23;
+  --c-muted: 91 102 115;
+  --c-line: 220 225 231;
+  color-scheme: light;
+}
+
+.dark {
+  --c-canvas: 10 14 19;
+  --c-surface: 17 24 35;
+  --c-sunken: 24 32 44;
+  --c-ink: 230 234 240;
+  --c-muted: 147 160 176;
+  --c-line: 34 48 63;
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------- base */
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* keep the sticky header from covering a focused or anchored element (WCAG 2.4.11) */
+    scroll-padding-top: 5.5rem;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    @apply bg-brand-500/25;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500/60 ring-offset-2 ring-offset-canvas rounded;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted/50;
+  }
+}
+
+/* ---------------------------------------------------------------- components */
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-2xl shadow-card;
+  }
+
+  .card-hover {
+    @apply transition duration-200 hover:shadow-pop hover:-translate-y-0.5 hover:border-brand-400/50;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100
+           select-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-500 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface border border-line text-ink hover:bg-sunken;
+  }
+
+  .btn-ghost {
+    @apply btn text-muted hover:text-ink hover:bg-sunken;
+  }
+
+  .btn-danger {
+    @apply btn bg-rose-700 text-white hover:bg-rose-600;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink
+           placeholder:text-muted/70 transition focus:border-brand-400;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-ink mb-1.5;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5
+           text-xs font-medium text-muted transition hover:border-brand-400 hover:text-ink cursor-pointer;
+  }
+
+  .chip-active {
+    @apply border-brand-600 bg-brand-600/10 text-brand-700 dark:text-brand-200;
+  }
+
+  .link {
+    @apply text-brand-600 dark:text-brand-300 hover:underline underline-offset-2 font-medium;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-sunken rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer
+           bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent;
+  }
+
+  .section-title {
+    @apply text-2xl sm:text-3xl font-bold text-ink;
+  }
+
+  .muted {
+    @apply text-muted;
+  }
+
+  .divide-line-y > * + * {
+    @apply border-t border-line;
+  }
+}
+
+/* ---------------------------------------------------------------- motion */
+@keyframes mm-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes mm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* pathLength="1" on the SVG path normalises dash units, so the arrow draws end to end. */
+@keyframes mm-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes mm-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* Staggered grid/list reveal (delay set per child below). */
+.stagger > * {
+  animation: mm-fade-up 0.4s ease-out both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(n + 7) { animation-delay: 0.26s; }
+
+/* Concept graph: nodes fade in by layer, prerequisite edges draw source -> target. */
+.mm-node {
+  animation: mm-fade-in 0.35s ease-out both;
+  animation-delay: var(--d, 0ms);
+}
+/* Keyboard-focusable nodes need a visible indicator on the node card itself. */
+.mm-node-hit:focus {
+  outline: none;
+}
+.mm-node-hit:focus-visible .mm-card {
+  stroke: #1B4F8F;
+  stroke-width: 2.6px;
+}
+.dark .mm-node-hit:focus-visible .mm-card {
+  stroke: #8CB2DE;
+  stroke-width: 2.6px;
+}
+.mm-edge {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mm-draw 0.45s ease-out both;
+  animation-delay: var(--d, 0ms);
+}
+.mm-pop {
+  animation: mm-pop 0.35s ease-out;
+}
+
+/* Scroll reveal — driven by useReveal(). */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.reveal.is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* If a keyboard user tabs into a section that has not revealed yet, show it
+   immediately rather than fading in around their focus ring. */
+.reveal:focus-within {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* ---------------------------------------------------------------- print */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border-color: #c8ccd2 !important;
+    break-inside: avoid;
+  }
+
+  a {
+    text-decoration: none;
+    color: #000 !important;
+  }
+}
+
+/* ---------------------------------------------------------------- a11y */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

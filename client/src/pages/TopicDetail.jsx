@@ -1,0 +1,173 @@
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { api } from '../api/client.js';
+import { useFetch } from '../hooks/useFetch.js';
+import ResourceCard from '../components/ResourceCard.jsx';
+import ProblemCard from '../components/ProblemCard.jsx';
+import TopicNotes from '../components/TopicNotes.jsx';
+import { Icon } from '../components/icons.jsx';
+import { Button, DifficultyPill, EmptyState, ErrorState, Loading, Tabs, cx } from '../components/ui.jsx';
+import { formatMinutes } from '../lib/format.js';
+
+const RESOURCE_FILTERS = [
+  { value: 'all', label: 'All', types: null },
+  { value: 'video', label: 'Videos', types: ['video'] },
+  { value: 'article', label: 'Read', types: ['article', 'book'] },
+  { value: 'interactive', label: 'Interactive', types: ['game', 'simulation'] },
+  { value: 'practice', label: 'Practice', types: ['problem_set', 'application'] },
+  { value: 'course', label: 'Courses', types: ['course'] },
+];
+
+export default function TopicDetail() {
+  const { slug } = useParams();
+  const { data, loading, error, reload } = useFetch(() => api(`/topics/${slug}`), [slug]);
+  const [tab, setTab] = useState('resources');
+  const [filter, setFilter] = useState('all');
+
+  if (loading) return <Loading label="Loading topic" />;
+  if (error) return <div className="mx-auto max-w-3xl px-4 py-16"><ErrorState error={error} onRetry={reload} /></div>;
+
+  const topic = data.topic;
+  const activeFilter = RESOURCE_FILTERS.find((f) => f.value === filter);
+  const resources = (topic.resources || []).filter(
+    (r) => !activeFilter.types || activeFilter.types.includes(r.type),
+  );
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+      <Link to={`/branches/${topic.branch_slug}`} className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+        <Icon name="arrowLeft" size={16} /> {topic.branch_name}
+      </Link>
+
+      <header className="mt-4 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+        <div className="max-w-3xl">
+          <h1 className="text-3xl sm:text-4xl font-bold">{topic.title}</h1>
+          <p className="text-muted mt-3 text-lg">{topic.summary}</p>
+          <div className="flex flex-wrap items-center gap-2.5 mt-5">
+            <DifficultyPill level={topic.difficulty_level} />
+            {topic.est_minutes > 0 && (
+              <span className="badge bg-sunken text-muted">
+                <Icon name="clock" size={13} /> {formatMinutes(topic.est_minutes)}
+              </span>
+            )}
+            {topic.tags?.map((t) => (
+              <Link key={t} to={`/explore?tag=${t}`} className="badge bg-sunken text-muted hover:text-brand-600">#{t}</Link>
+            ))}
+          </div>
+        </div>
+        <Button as={Link} to={`/contribute?topic=${topic.slug}`} variant="secondary" className="shrink-0">
+          <Icon name="plus" size={16} /> Add a resource
+        </Button>
+      </header>
+
+      <div className="grid lg:grid-cols-[1fr_20rem] gap-8 mt-10">
+        <div>
+          <Tabs
+            tabs={[
+              { value: 'resources', label: 'Resources', icon: 'layers', count: topic.resources?.length || 0 },
+              { value: 'problems', label: 'Problems', icon: 'puzzle', count: topic.problems?.length || 0 },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+
+          {tab === 'resources' && (
+            <div className="mt-5">
+              <div className="flex flex-wrap gap-2 mb-4">
+                {RESOURCE_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setFilter(f.value)}
+                    className={cx('chip', filter === f.value && 'chip-active')}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              {resources.length === 0 ? (
+                <EmptyState
+                  icon="layers"
+                  title="No resources here yet"
+                  message="Be the first to contribute a resource for this concept."
+                  action={<Button as={Link} to={`/contribute?topic=${topic.slug}`}>Contribute a resource</Button>}
+                />
+              ) : (
+                <div className="space-y-3 stagger">
+                  {resources.map((r) => <ResourceCard key={r.id} resource={r} shownTopics={false} />)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'problems' && (
+            <div className="mt-5">
+              {topic.problems?.length === 0 ? (
+                <EmptyState
+                  icon="puzzle"
+                  title="No problems yet"
+                  message="Share a problem that helped this concept click."
+                  action={<Button as={Link} to={`/contribute?topic=${topic.slug}&tab=problem`}>Share a problem</Button>}
+                />
+              ) : (
+                <div className="space-y-3 stagger">
+                  {topic.problems.map((p) => <ProblemCard key={p.id} problem={p} />)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <aside className="space-y-5">
+          <TopicNotes slug={topic.slug} />
+
+          <div className="card p-5">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Icon name="arrowLeft" size={16} className="text-muted" /> Prerequisites
+            </h3>
+            {topic.prerequisites.length === 0 ? (
+              <p className="text-sm text-muted mt-3">None - this is a great starting point.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {topic.prerequisites.map((p) => (
+                  <li key={p.id}>
+                    <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1.5 hover:bg-sunken">
+                      <span>{p.title}</span>
+                      <span className="text-xs text-muted">L{p.difficulty_level}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {topic.dependents.length > 0 && (
+            <div className="card p-5">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Icon name="arrowRight" size={16} className="text-muted" /> Leads to
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {topic.dependents.map((p) => (
+                  <li key={p.id}>
+                    <Link to={`/topics/${p.slug}`} className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1.5 hover:bg-sunken">
+                      <span>{p.title}</span>
+                      <span className="text-xs text-muted">L{p.difficulty_level}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="card p-5">
+            <h3 className="font-semibold">Put it in context</h3>
+            <p className="text-sm text-muted mt-2">See how this concept connects to the rest of the graph.</p>
+            <Button variant="secondary" size="sm" className="mt-3 w-full" as={Link} to={`/graph?focus=${topic.slug}`}>
+              <Icon name="nodes" size={15} /> Show in concept map
+            </Button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
