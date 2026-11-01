@@ -20,9 +20,23 @@ const RESOURCE_FILTERS = [
 
 export default function TopicDetail() {
   const { slug } = useParams();
-  const { data, loading, error, reload } = useFetch(() => api(`/topics/${slug}`), [slug]);
+  const { data, loading, error, reload, setData } = useFetch(() => api(`/topics/${slug}`), [slug]);
   const [tab, setTab] = useState('resources');
   const [filter, setFilter] = useState('all');
+
+  // Keep the cached topic in step with a vote, and re-rank so the order on screen
+  // matches the order the server would return.
+  const handleVoteChange = (resourceId, vote) => {
+    setData((prev) => {
+      if (!prev?.topic) return prev;
+      const resources = prev.topic.resources
+        .map((r) => (r.id === resourceId
+          ? { ...r, net_votes: vote.net_votes, vote_count: vote.vote_count, my_vote: vote.myVote }
+          : r))
+        .sort((a, b) => b.net_votes - a.net_votes || String(a.title).localeCompare(String(b.title)));
+      return { ...prev, topic: { ...prev.topic, resources } };
+    });
+  };
 
   if (loading) return <Loading label="Loading topic" />;
   if (error) return <div className="mx-auto max-w-3xl px-4 py-16"><ErrorState error={error} onRetry={reload} /></div>;
@@ -94,7 +108,7 @@ export default function TopicDetail() {
                 />
               ) : (
                 <div className="space-y-3 stagger">
-                  {resources.map((r) => <ResourceCard key={r.id} resource={r} shownTopics={false} />)}
+                  {resources.map((r) => <ResourceCard key={r.id} resource={r} shownTopics={false} onChange={handleVoteChange} />)}
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ export default function ResourceCard({ resource, onChange, shownTopics = true })
   const { isAuthenticated } = useAuth();
   const { toast, error } = useToast();
   const [netVotes, setNetVotes] = useState(resource.net_votes ?? 0);
+  const [voteCount, setVoteCount] = useState(resource.vote_count ?? 0);
   const [myVote, setMyVote] = useState(resource.my_vote ?? 0);
   const [busy, setBusy] = useState(false);
 
@@ -21,18 +22,23 @@ export default function ResourceCard({ resource, onChange, shownTopics = true })
     }
     if (busy) return;
     setBusy(true);
-    const prev = { netVotes, myVote };
+    const prev = { netVotes, myVote, voteCount };
     const nextVote = myVote === value ? 0 : value;
+    // Optimistic: score moves by the difference, and the total only changes when a
+    // vote is added or removed (switching sides leaves the count alone).
     setMyVote(nextVote);
     setNetVotes((v) => v - myVote + nextVote);
+    setVoteCount((c) => Math.max(0, c + (nextVote === 0 ? -1 : myVote === 0 ? 1 : 0)));
     try {
       const res = await api(`/resources/${resource.id}/vote`, { method: 'POST', body: { value } });
       setNetVotes(res.net_votes);
       setMyVote(res.myVote);
+      setVoteCount(res.vote_count);
       onChange?.(resource.id, res);
     } catch (err) {
       setNetVotes(prev.netVotes);
       setMyVote(prev.myVote);
+      setVoteCount(prev.voteCount);
       error(err.message);
     } finally {
       setBusy(false);
@@ -85,7 +91,7 @@ export default function ResourceCard({ resource, onChange, shownTopics = true })
           <span className="inline-flex items-center gap-1">
             <Icon name="globe" size={13} /> {hostname(resource.url)}
           </span>
-          {resource.vote_count > 0 && <span>{resource.vote_count} votes</span>}
+          {voteCount > 0 && <span>{voteCount} votes</span>}
           {resource.submitted_by_name && <span>by {resource.submitted_by_name}</span>}
         </div>
 
