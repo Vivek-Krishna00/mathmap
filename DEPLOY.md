@@ -239,6 +239,7 @@ Environment variables that matter:
 | Region | `asia-southeast1` |
 | Image | built from `Dockerfile` via Cloud Build → Artifact Registry `cloud-run-source-deploy` |
 | Secrets | `mathmap-jwt`, `mathmap-db-url` |
+| Custom domain | `mathmap.vivekbuilds.tech` — mapping pending domain verification |
 
 Verified live: `/api/health` reports `db: up`, `/` and `/dashboard` serve the SPA,
 `/api/unknown` stays a JSON 404, `/api/stats` returns the seeded 6/66/120/58/12/737, and a
@@ -247,12 +248,15 @@ Singapore is ~120 ms from India.
 
 ---
 
-## 4. Custom domain — `vivekbuilds.tech`
+## 4. Custom domain — `mathmap.vivekbuilds.tech`
+
+A **subdomain**, deliberately. It needs one `CNAME` and nothing else: no A/AAAA records, no
+apex-forwarding conflicts, and the root domain stays free for whatever else goes there.
 
 ### 4.1 Prove ownership (Search Console)
 
-Cloud Run refuses to map a domain you have not verified. This one is interactive — it needs
-a browser and the Google account that owns the project:
+Cloud Run refuses to map a domain the account has not verified. This step is interactive — it
+needs a browser and the Google account that owns the project:
 
 ```bash
 gcloud domains verify vivekbuilds.tech     # opens Search Console
@@ -260,80 +264,79 @@ gcloud domains list-user-verified          # empty until verification completes
 ```
 
 1. Search Console → **Add property** → choose **Domain** (not "URL prefix").
-2. Enter `vivekbuilds.tech`. Google shows a `google-site-verification=...` TXT value.
-3. Add it at the DNS panel:
+2. Enter **`vivekbuilds.tech`** — the root domain. A Domain property covers every subdomain,
+   so `mathmap.` is authorised by the same TXT record.
+3. Add the TXT record at your DNS host:
 
    | Type | Name | Value | TTL |
    | --- | --- | --- | --- |
-   | TXT | `@` | `google-site-verification=...` | 300 |
+   | TXT | `@` (or `vivekbuilds.tech`) | `google-site-verification=...` | 300 |
 
-4. Back in Search Console, press **Verify**.
+4. Back in Search Console, press **Verify**. Then `gcloud domains list-user-verified` should
+   list it.
 
-### 4.2 Create the mappings
+> Verifying the root domain once covers all subdomains. Verifying only
+> `mathmap.vivekbuilds.tech` also works, but you would have to repeat it for every new host.
 
-For a fully managed Cloud Run service these live under the **beta** command group:
+### 4.2 Create the mapping
+
+Domain mappings for a fully managed Cloud Run service live under the **beta** command group,
+which may need installing first:
 
 ```bash
-gcloud beta run domain-mappings create --service mathmap --domain vivekbuilds.tech --region "$REGION"
-gcloud beta run domain-mappings create --service mathmap --domain www.vivekbuilds.tech --region "$REGION"
+gcloud components install beta --quiet
 
-# the authoritative record list for your mapping
+gcloud beta run domain-mappings create \
+  --service mathmap --domain mathmap.vivekbuilds.tech --region "$REGION"
+
+gcloud beta run domain-mappings list --region "$REGION"
 gcloud beta run domain-mappings describe \
-  --service mathmap --domain vivekbuilds.tech --region "$REGION"
+  --service mathmap --domain mathmap.vivekbuilds.tech --region "$REGION"
 ```
 
-### 4.3 DNS records
+Until verification is done this fails with *"The provided domain does not appear to be
+verified for the current account"* — that message means 4.1 is unfinished, not that the
+command is wrong.
 
-**Apex — `vivekbuilds.tech`.** Google's documented addresses behind
-`ghs.googlehosted.com`; confirm them against the `describe` output above before saving.
+### 4.3 DNS record
 
-| Type | Name | Value | TTL |
+One record. Confirm the target against the `describe` output before saving.
+
+| Type | Name / Host | Value | TTL |
 | --- | --- | --- | --- |
-| A | `@` | `216.239.32.21` | 300 |
-| A | `@` | `216.239.34.21` | 300 |
-| A | `@` | `216.239.36.21` | 300 |
-| A | `@` | `216.239.38.21` | 300 |
-| AAAA | `@` | `2001:4860:4802:32::15` | 300 |
-| AAAA | `@` | `2001:4860:4802:34::15` | 300 |
-| AAAA | `@` | `2001:4860:4802:36::15` | 300 |
-| AAAA | `@` | `2001:4860:4802:38::15` | 300 |
+| CNAME | `mathmap` | `ghs.googlehosted.com` | 300 |
 
-**`www`** — a single record:
-
-| Type | Name | Value | TTL |
-| --- | --- | --- | --- |
-| CNAME | `www` | `ghs.googlehosted.com` | 300 |
-
-Use `@` (or a blank name) for the apex. If the panel demands a fully qualified name,
-write `vivekbuilds.tech.` and `www.vivekbuilds.tech.` with the trailing dot.
+Some panels want the full name — then use `mathmap.vivekbuilds.tech.` with the trailing dot.
+Leave the apex alone: no A, no AAAA, no forwarding.
 
 ### 4.4 Wait for the certificate
 
 ```bash
 # has DNS propagated?
-dig +short vivekbuilds.tech A
-dig +short www.vivekbuilds.tech CNAME
+dig +short mathmap.vivekbuilds.tech CNAME     # expect ghs.googlehosted.com.
 
 # has Google issued the managed certificate?
-gcloud run domain-mappings describe \
-  --service mathmap --domain vivekbuilds.tech --region "$REGION" \
+gcloud beta run domain-mappings describe \
+  --service mathmap --domain mathmap.vivekbuilds.tech --region "$REGION" \
   --format='value(status.conditions)'
 ```
 
 `CertificateProvisioned` turns `True` when DNS resolves and the certificate is issued —
-usually minutes, documented up to 24 hours. Until then the domain serves an error; the
+usually minutes, documented up to 24 hours. Until then the subdomain serves an error; the
 `*.run.app` URL keeps working throughout.
 
-### 4.5 Notes for this provider
+### 4.5 Notes for this setup
 
-- In the get.tech / namify panel the section is **DNS Management** (sometimes "Manage
-  DNS" or "DNS Zone"). The records above go there.
-- If the domain's nameservers have been delegated to another provider, the records must
-  be created **where the nameservers point**, not at the registrar. Check:
-  `dig +short NS vivekbuilds.tech`.
-- Do **not** switch on any registrar-level "URL forwarding" or "web redirect" for the
-  apex. It overrides the A records and the mapping will never validate.
-- Leave TTL at 300 while setting up, then raise it once the site is live.
+- **DNS is not at the registrar.** `dig +short NS vivekbuilds.tech` returns
+  `ns1.dns.host … ns4.dns.host`, so records go in the **dns.host** panel, not get.tech. Adding
+  them at the registrar does nothing.
+- A `CNAME` cannot coexist with other records on the same name — do not also add an A record
+  for `mathmap`.
+- Do not enable "URL forwarding" or a "web redirect" on `mathmap`; it overrides the CNAME and
+  the mapping never validates.
+- Leave the TTL at 300 while setting up, then raise it once the site is live.
+- `CLIENT_ORIGIN` on the service must be this origin — it already is
+  (`https://mathmap.vivekbuilds.tech`).
 
 ---
 
