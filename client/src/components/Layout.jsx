@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from './icons.jsx';
+import LogoMark from './LogoMark.jsx';
 import { Avatar, Button, IconButton, cx } from './ui.jsx';
 import CommandPalette, { OPEN_PALETTE_EVENT } from './CommandPalette.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -38,8 +39,8 @@ function ThemeToggle() {
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2.5 group">
-      <span className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition">
-        <Icon name="sigma" size={20} strokeWidth={2.2} />
+      <span className="w-9 h-9 rounded-xl overflow-hidden shadow-sm group-hover:scale-105 transition">
+        <LogoMark />
       </span>
       <span className="font-display font-bold text-lg tracking-tight">MathMap</span>
     </Link>
