@@ -7,6 +7,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+# real secrets for the self-contained compose stack; only the .example is tracked
+.env.compose
 
 # builds
 client/dist/

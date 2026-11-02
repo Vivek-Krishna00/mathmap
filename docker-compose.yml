@@ -1,0 +1,52 @@
+# Self-contained stack: app + PostgreSQL with a persistent volume.
+#
+# This is the correct way to "put the database in Docker" — Postgres in its own
+# service with a named volume, so data survives restarts. It is for a VPS or local
+# use. It is NOT for Cloud Run, where the filesystem is ephemeral and the instance
+# scales to zero: the volume would be discarded and every restart would lose data.
+#
+#   MATHMAP_DB_PASSWORD=$(openssl rand -hex 16) \
+#   MATHMAP_JWT_SECRET=$(openssl rand -hex 32) \
+#   docker compose up -d --build
+#
+# Variables are deliberately prefixed so this never silently picks up the
+# development values from the repository's .env.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mathmap
+      POSTGRES_USER: mathmap
+      POSTGRES_PASSWORD: ${MATHMAP_DB_PASSWORD:?set MATHMAP_DB_PASSWORD}
+    volumes:
+      - mathmap-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mathmap -d mathmap']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    # Not published by default: only the app needs to reach it. Add
+    # "5433:5432" here if you want to run psql or the seed from the host.
+
+  app:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # Cloud Run sets this itself; behind nginx or a PaaS it must be on, or every
+      # client shares one rate-limit bucket.
+      TRUST_PROXY: ${MATHMAP_TRUST_PROXY:-1}
+      DATABASE_URL: postgres://mathmap:${MATHMAP_DB_PASSWORD:?}@db:5432/mathmap
+      JWT_SECRET: ${MATHMAP_JWT_SECRET:?set MATHMAP_JWT_SECRET}
+      CLIENT_ORIGIN: ${MATHMAP_CLIENT_ORIGIN:-http://localhost:8080}
+    ports:
+      - '${MATHMAP_APP_PORT:-8080}:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mathmap-db:

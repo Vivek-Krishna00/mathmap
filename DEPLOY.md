@@ -10,6 +10,29 @@ violations.
 
 ---
 
+## Where the database lives
+
+| Setup | Persists? | Use it when |
+| --- | --- | --- |
+| Cloud Run + **managed** Postgres (Cloud SQL / Neon / Supabase) | yes | Cloud Run, any environment |
+| Cloud Run + Postgres **inside the container** | **no** | never |
+| VPS + `docker compose` (app + Postgres + a named volume) | yes | self-hosting on one box |
+
+**Do not bundle Postgres into the Cloud Run image.** Cloud Run gives each instance an
+ephemeral filesystem and scales to zero when idle. A database inside the container
+therefore:
+
+- loses every row when the instance stops, restarts, or is redeployed;
+- gives each of two instances its own separate database, so a user's data depends on
+  which one answers the request;
+- makes cold starts far slower, and re-seeding on boot would truncate on every start —
+  destroying roadmap share tokens, which is the exact failure hit earlier in this project.
+
+The filesystem is only durable when something keeps it: a **volume** on a host, or a
+**managed** database. Not a stateless container.
+
+---
+
 ## 1. What runs where
 
 | Piece | Where |
@@ -150,7 +173,40 @@ mapping will sit unfinished.
 - **Health check**: `GET /api/health` returns `{"status":"ok","db":"up"}` only when the
   database is reachable — useful as a Cloud Run readiness probe and for a quick smoke test.
 
-## 6. Local rehearsal
+## 6. Self-contained stack: app + Postgres on one box
+
+`docker-compose.yml` runs both services with a named volume, so the database lives
+inside Docker *and* survives restarts. This is the correct way to do what "pack the
+database into the container" is aiming at — and it needs a host that keeps its disk,
+such as a VPS. It is not a Cloud Run deployment.
+
+```bash
+cp .env.compose.example .env.compose
+sed -i '' "s|^MATHMAP_DB_PASSWORD=.*|MATHMAP_DB_PASSWORD=$(openssl rand -hex 16)|" .env.compose
+sed -i '' "s|^MATHMAP_JWT_SECRET=.*|MATHMAP_JWT_SECRET=$(openssl rand -hex 32)|" .env.compose
+
+npm run stack:up                       # build + start app and db
+docker compose --env-file .env.compose exec -T db psql -U mathmap -d mathmap -f - < db/schema.sql
+docker compose --env-file .env.compose run --rm -e ALLOW_DEMO_SEED=true app node src/db/seed.js
+
+npm run stack:down                     # stop (add -v to also delete the data volume)
+```
+
+The `MATHMAP_` prefix keeps these variables from silently picking up the development
+values in the repository's `.env`. `.env.compose` is gitignored; only the `.example`
+is tracked.
+
+**Verified**: with the volume, a `down` + `up` cycle (both containers destroyed and
+recreated) leaves the data intact — a marker row and all 66 topics, 124 resources and
+12 users survived. Removing the volume with `down -v` and starting again gives
+`relation "topic_notes" does not exist`: the volume is what carries the data, and that
+is precisely what Cloud Run does not provide.
+
+Trade-offs on a VPS: you own backups, patching and monitoring, and a single box is a
+single point of failure. For a project submission that is a reasonable trade; for
+anything real, the managed database is worth the money.
+
+## 7. Local rehearsal
 
 The exact sequence used to verify this guide, against a throwaway Postgres:
 

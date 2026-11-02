@@ -15,7 +15,10 @@
     "dev:client": "npm --prefix client run dev",
     "start": "npm --prefix server start",
     "test": "npm --prefix server test",
-    "build": "npm --prefix client run build"
+    "build": "npm --prefix client run build",
+    "stack:up": "docker compose --env-file .env.compose up -d --build",
+    "stack:down": "docker compose --env-file .env.compose down",
+    "stack:logs": "docker compose --env-file .env.compose logs -f app"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
