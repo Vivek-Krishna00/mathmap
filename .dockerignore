@@ -1,0 +1,18 @@
+.git
+.gitignore
+.DS_Store
+
+# dependencies and build output are produced inside the image
+**/node_modules
+**/dist
+**/.vite
+
+# secrets must never enter the image; configuration is injected at runtime
+.env
+.env.*
+!.env.example
+
+# not needed by the running app
+docs
+pentest.mjs
+*.md

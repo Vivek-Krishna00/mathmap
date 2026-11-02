@@ -1,9 +1,11 @@
+import path from 'node:path';
+import fs from 'node:fs';
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
 import { pool } from './db/pool.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
-import { securityHeaders } from './middleware/securityHeaders.js';
+import { securityHeaders, webSecurityHeaders } from './middleware/securityHeaders.js';
 import { rateLimit } from './middleware/rateLimit.js';
 
 import authRoutes from './routes/auth.routes.js';
@@ -35,6 +37,7 @@ export function createApp() {
 
   app.use(cors({ origin: config.clientOrigins }));
   app.use('/api', securityHeaders);
+  app.use(webSecurityHeaders);
 
   // Global backstop against unauthenticated abuse of expensive endpoints.
   app.use('/api', rateLimit({ windowMs: 60_000, max: 600 }));
@@ -69,6 +72,20 @@ export function createApp() {
   app.use('/api/moderation', moderationRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/stats', statsRoutes);
+
+  // Serve the built client when it is present, so a single container can host the
+  // whole app. Absent in development, where Vite serves the client and proxies
+  // /api to this server.
+  const clientDist = path.join(config.rootDir, 'client', 'dist');
+  if (fs.existsSync(clientDist)) {
+    // Vite fingerprints asset filenames, so they are safe to cache indefinitely.
+    app.use('/assets', express.static(path.join(clientDist, 'assets'), { immutable: true, maxAge: '1y' }));
+    app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+    // Client-side routes fall back to the SPA shell; /api keeps its JSON 404.
+    app.get(/^\/(?!api(\/|$)).*/, (req, res) => {
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);
