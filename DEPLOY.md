@@ -239,7 +239,7 @@ Environment variables that matter:
 | Region | `asia-southeast1` |
 | Image | built from `Dockerfile` via Cloud Build → Artifact Registry `cloud-run-source-deploy` |
 | Secrets | `mathmap-jwt`, `mathmap-db-url` |
-| Custom domain | `mathmap.vivekbuilds.tech` — mapping pending domain verification |
+| Custom domain | `mathmap.vivekbuilds.tech` — **mapping created**, `DomainRoutable: True`, awaiting DNS for the certificate |
 
 Verified live: `/api/health` reports `db: up`, `/` and `/dashboard` serve the SPA,
 `/api/unknown` stays a JSON 404, `/api/stats` returns the seeded 6/66/120/58/12/737, and a
