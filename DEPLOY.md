@@ -104,60 +104,134 @@ docker run --rm \
 
 ## 3. Deploy to Cloud Run
 
+Values used throughout: service `mathmap`, region **`asia-south1`** (Mumbai), domain
+**`vivekbuilds.tech`**. Domain mappings are regional, so the service and the mapping
+must live in the same region.
+
 ```bash
-# one-time: keep the JWT signing key out of the image and the console
+export PROJECT_ID=your-project-id
+export REGION=asia-south1
+gcloud config set project "$PROJECT_ID"
+
+# one-time: keep the JWT signing key out of the image and out of the console
 openssl rand -hex 32 | gcloud secrets create mathmap-jwt --data-file=-
 
 gcloud run deploy mathmap \
   --source . \
-  --region asia-south1 \
+  --region "$REGION" \
   --allow-unauthenticated \
   --port 8080 \
   --memory 512Mi --cpu 1 \
   --min-instances 0 --max-instances 2 \
-  --add-cloudsql-instances=PROJECT:asia-south1:mathmap-db \
-  --set-env-vars NODE_ENV=production,TRUST_PROXY=1,CLIENT_ORIGIN=https://app.example.com \
-  --set-env-vars DATABASE_URL='postgresql://...' \
+  --set-env-vars "NODE_ENV=production,TRUST_PROXY=1,CLIENT_ORIGIN=https://vivekbuilds.tech,https://www.vivekbuilds.tech" \
+  --set-env-vars "DATABASE_URL=postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require" \
   --set-secrets JWT_SECRET=mathmap-jwt:latest
 ```
 
-`--source .` builds the included `Dockerfile` with Cloud Build.
+On the **Cloud SQL** path only, add
+`--add-cloudsql-instances=$PROJECT_ID:$REGION:mathmap-db` and switch `DATABASE_URL` to the
+socket form (`...@/mathmap?host=/cloudsql/$PROJECT_ID:$REGION:mathmap-db`).
+
+`--source .` builds the included `Dockerfile` with Cloud Build and prints the
+`*.run.app` URL. Check that URL **before** touching DNS:
+
+```bash
+curl https://mathmap-HASH-REGION.a.run.app/api/health   # expect {"status":"ok","db":"up"}
+```
 
 Environment variables that matter:
 
-| Variable | Value | Why |
+| Variable | Value here | Why |
 | --- | --- | --- |
 | `NODE_ENV` | `production` | enables HSTS and generic 5xx bodies |
 | `TRUST_PROXY` | `1` | Cloud Run terminates TLS; without this every client shares one rate-limit bucket |
-| `CLIENT_ORIGIN` | `https://app.example.com` | CORS allow-list |
-| `JWT_SECRET` | from Secret Manager | signed-in sessions break if it changes |
+| `CLIENT_ORIGIN` | `https://vivekbuilds.tech,https://www.vivekbuilds.tech` | CORS allow-list (comma-separated; verified both are echoed and unknown origins are not) |
+| `JWT_SECRET` | Secret Manager | changing it signs everyone out |
 | `DATABASE_URL` | provider string | |
-| `ALLOW_DEMO_SEED` | **unset** | off in production |
+| `ALLOW_DEMO_SEED` | **unset** | the demo-account shortcut stays off in production |
 
 ---
 
-## 4. Custom domain
+## 4. Custom domain — `vivekbuilds.tech`
+
+### 4.1 Prove ownership (Search Console)
+
+Cloud Run refuses to map a domain you have not verified. Sign in with the account
+that owns the Cloud project.
+
+1. Search Console → **Add property** → choose **Domain** (not "URL prefix").
+2. Enter `vivekbuilds.tech`. Google shows a `google-site-verification=...` TXT value.
+3. Add it at the DNS panel:
+
+   | Type | Name | Value | TTL |
+   | --- | --- | --- | --- |
+   | TXT | `@` | `google-site-verification=...` | 300 |
+
+4. Back in Search Console, press **Verify**.
+
+### 4.2 Create the mappings
 
 ```bash
-gcloud run domain-mappings create \
-  --service mathmap --domain app.example.com --region asia-south1
+gcloud run domain-mappings create --service mathmap --domain vivekbuilds.tech --region "$REGION"
+gcloud run domain-mappings create --service mathmap --domain www.vivekbuilds.tech --region "$REGION"
 
-# then read back the exact records Google wants
+# the authoritative record list for your mapping
 gcloud run domain-mappings describe \
-  --service mathmap --domain app.example.com --region asia-south1
+  --service mathmap --domain vivekbuilds.tech --region "$REGION"
 ```
 
-Roughly:
+### 4.3 DNS records
 
-- **Subdomain** (`app.example.com`): `CNAME` → `ghs.googlehosted.com`
-- **Apex** (`example.com`): the A/AAAA records the command prints
+**Apex — `vivekbuilds.tech`.** Google's documented addresses behind
+`ghs.googlehosted.com`; confirm them against the `describe` output above before saving.
 
-Google must verify domain ownership first (Search Console). The certificate is
-provisioned automatically once DNS resolves — usually minutes, occasionally hours.
+| Type | Name | Value | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `216.239.32.21` | 300 |
+| A | `@` | `216.239.34.21` | 300 |
+| A | `@` | `216.239.36.21` | 300 |
+| A | `@` | `216.239.38.21` | 300 |
+| AAAA | `@` | `2001:4860:4802:32::15` | 300 |
+| AAAA | `@` | `2001:4860:4802:34::15` | 300 |
+| AAAA | `@` | `2001:4860:4802:36::15` | 300 |
+| AAAA | `@` | `2001:4860:4802:38::15` | 300 |
 
-If the domain's DNS is on Cloudflare, set these records to **DNS only (grey cloud)**
-until the certificate is issued. Proxying prevents Google from validating and the
-mapping will sit unfinished.
+**`www`** — a single record:
+
+| Type | Name | Value | TTL |
+| --- | --- | --- | --- |
+| CNAME | `www` | `ghs.googlehosted.com` | 300 |
+
+Use `@` (or a blank name) for the apex. If the panel demands a fully qualified name,
+write `vivekbuilds.tech.` and `www.vivekbuilds.tech.` with the trailing dot.
+
+### 4.4 Wait for the certificate
+
+```bash
+# has DNS propagated?
+dig +short vivekbuilds.tech A
+dig +short www.vivekbuilds.tech CNAME
+
+# has Google issued the managed certificate?
+gcloud run domain-mappings describe \
+  --service mathmap --domain vivekbuilds.tech --region "$REGION" \
+  --format='value(status.conditions)'
+```
+
+`CertificateProvisioned` turns `True` when DNS resolves and the certificate is issued —
+usually minutes, documented up to 24 hours. Until then the domain serves an error; the
+`*.run.app` URL keeps working throughout.
+
+### 4.5 Notes for this provider
+
+- In the get.tech / namify panel the section is **DNS Management** (sometimes "Manage
+  DNS" or "DNS Zone"). The records above go there.
+- If the domain's nameservers have been delegated to another provider, the records must
+  be created **where the nameservers point**, not at the registrar. Check:
+  `dig +short NS vivekbuilds.tech`.
+- Do **not** switch on any registrar-level "URL forwarding" or "web redirect" for the
+  apex. It overrides the A records and the mapping will never validate.
+- Leave TTL at 300 while setting up, then raise it once the site is live.
 
 ---
 
@@ -226,3 +300,31 @@ docker run -d --name mathmap --network mathmap-net -p 8080:8080 \
   -e JWT_SECRET=local-secret -e NODE_ENV=production -e TRUST_PROXY=1 \
   mathmap:local
 ```
+
+---
+
+## 8. Go-live checklist
+
+Work through it in this order; each step has an observable check.
+
+- [ ] `gcloud services enable run.googleapis.com cloudbuild.googleapis.com` (and
+      `secretmanager.googleapis.com`, `sqladmin.googleapis.com` on the Cloud SQL path)
+- [ ] Database created; `db/schema.sql` applied (**it drops and recreates every object**)
+- [ ] Seeded **once** from a workstation or one-off container, never from `CMD`
+- [ ] `JWT_SECRET` created in Secret Manager and referenced with `--set-secrets`
+- [ ] Service deployed; `curl .../api/health` returns `{"status":"ok","db":"up"}`
+- [ ] Login works on the `*.run.app` URL **before** DNS is touched
+- [ ] Domain verified in Search Console (TXT record)
+- [ ] Domain mappings created for apex and `www`
+- [ ] A / AAAA / CNAME records added, matching `domain-mappings describe`
+- [ ] `dig +short vivekbuilds.tech A` returns the four Google addresses
+- [ ] `CertificateProvisioned` is `True`
+- [ ] `https://vivekbuilds.tech` loads, login works, and a share link opens
+      (share URLs are built from `window.location.origin`, so they pick up the domain
+      with no configuration)
+- [ ] `CLIENT_ORIGIN` covers both hosts — already set above
+- [ ] Confirm the seed is **not** in any start command
+
+Nothing here is automated on purpose: every step creates billable cloud resources or
+changes public DNS, and both are worth a deliberate keystroke.
+
