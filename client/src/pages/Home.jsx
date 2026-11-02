@@ -4,6 +4,7 @@ import { useFetch } from '../hooks/useFetch.js';
 import { useReveal } from '../hooks/motion.js';
 import { Icon } from '../components/icons.jsx';
 import HeroGraphic from '../components/HeroGraphic.jsx';
+import RoadmapPreview from '../components/RoadmapPreview.jsx';
 import { Button, Loading, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -57,8 +58,9 @@ export default function Home() {
               </p>
             )}
           </div>
-          <div className="flex justify-center lg:justify-end">
-            <HeroGraphic />
+          <div className="flex flex-col items-center lg:items-end gap-2">
+            <HeroGraphic className="max-w-sm" />
+            <RoadmapPreview className="w-full max-w-xs -mt-4 sm:-mt-8 relative z-10" />
           </div>
         </div>
       </section>

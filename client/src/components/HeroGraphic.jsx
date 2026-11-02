@@ -6,9 +6,9 @@ import { cx } from './ui.jsx';
  * Drawn as inline SVG rather than an image so it stays crisp at any size, follows
  * the theme's line colour, and adds nothing to the bundle.
  */
-export default function HeroGraphic({ className }) {
+export default function HeroGraphic({ className = '' }) {
   return (
-    <div className={cx('w-full max-w-md', className)} aria-hidden="true">
+    <div className={cx('w-full', className)} aria-hidden="true">
       <svg viewBox="0 0 420 420" className="w-full h-auto" focusable="false">
         {/* orbits — muted rather than `line`, so they stay visible in dark mode too */}
         <g fill="none" stroke="rgb(var(--c-muted))" strokeWidth="1.2" opacity="0.4">
