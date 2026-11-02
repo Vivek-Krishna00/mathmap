@@ -48,7 +48,11 @@ so it can scale or restart freely.
 
 ## 2. Create the database
 
-### Option A — Cloud SQL (GCP-native, paid)
+**Chosen setup: Neon free tier.** Cloud SQL is documented below for completeness but is
+not used — it is the one piece with no free tier (~$8-10/month), so it would spend the
+trial credit while Neon costs nothing permanent.
+
+### Option A — Cloud SQL (GCP-native, paid — not used here)
 
 ```bash
 gcloud sql instances create mathmap-db \
@@ -65,14 +69,44 @@ postgresql://postgres:PASSWORD@/mathmap?host=/cloudsql/PROJECT:asia-south1:mathm
 
 Deploy must then include `--add-cloudsql-instances=PROJECT:asia-south1:mathmap-db`.
 
-### Option B — Neon / Supabase (free tier, works after the trial)
+### Option B — Neon (chosen)
+
+Create the project in the Neon console. Two connection strings are offered, and the
+difference matters:
+
+| Endpoint | Hostname shape | Use for |
+| --- | --- | --- |
+| Pooled | `ep-xxx-xxxx-pooler.<region>.aws.neon.tech` | **the app on Cloud Run** |
+| Direct | `ep-xxx-xxxx.<region>.aws.neon.tech` | `psql`, schema, seeding |
 
 ```
-postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require
+# app (Cloud Run) — note the -pooler suffix
+postgresql://USER:PASSWORD@ep-xxx-xxxx-pooler.ap-southeast-1.aws.neon.tech/mathmap?sslmode=require
+
+# workstation (schema + seed) — direct endpoint
+postgresql://USER:PASSWORD@ep-xxx-xxxx.ap-southeast-1.aws.neon.tech/mathmap?sslmode=require
 ```
 
-Supabase caveat: the direct hostname is IPv6-only and Cloud Run egress is IPv4, so
-use the **Supavisor pooler** (port `6543`), not the direct connection.
+Why the pooler matters: Cloud Run scales instances up and down, and each instance
+opens its own `pg` pool (`max: 10`). The pooler (PgBouncer, transaction mode) absorbs
+that churn; the direct endpoint would exhaust Neon's connection limit as instances
+multiply.
+
+Compatible with this codebase — verified: there is no session-level SQL anywhere
+(`SET`, `LISTEN`, `NOTIFY`, advisory locks, temp tables, `PREPARE`). The transaction
+helper holds one client across `BEGIN`…`COMMIT`, which transaction pooling supports.
+
+TLS — verified: the runtime image carries the CA bundle and completes a TLS 1.3
+handshake with `authorized=true`, so `sslmode=require` validates the certificate
+rather than silently skipping it.
+
+**Region**: pick the Neon region nearest your Cloud Run region. If Mumbai
+(`asia-south1`) is not offered, use Singapore (`ap-southeast-1`) — or run Cloud Run in
+`asia-southeast1` so the app sits beside the database. Every query pays the round trip.
+
+Neon suspends an idle project, so the first request after a quiet period is slower.
+This is already handled: `pg` emits an error on the dropped idle client, the pool logs
+it, and the next query transparently reconnects.
 
 ### Apply the schema
 
@@ -116,6 +150,10 @@ gcloud config set project "$PROJECT_ID"
 # one-time: keep the JWT signing key out of the image and out of the console
 openssl rand -hex 32 | gcloud secrets create mathmap-jwt --data-file=-
 
+# the database URL carries the Neon password, so it belongs in Secret Manager too
+printf '%s' 'postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/mathmap?sslmode=require' \
+  | gcloud secrets create mathmap-db-url --data-file=-
+
 gcloud run deploy mathmap \
   --source . \
   --region "$REGION" \
@@ -124,13 +162,12 @@ gcloud run deploy mathmap \
   --memory 512Mi --cpu 1 \
   --min-instances 0 --max-instances 2 \
   --set-env-vars "NODE_ENV=production,TRUST_PROXY=1,CLIENT_ORIGIN=https://vivekbuilds.tech,https://www.vivekbuilds.tech" \
-  --set-env-vars "DATABASE_URL=postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require" \
-  --set-secrets JWT_SECRET=mathmap-jwt:latest
+  --set-secrets JWT_SECRET=mathmap-jwt:latest,DATABASE_URL=mathmap-db-url:latest
 ```
 
-On the **Cloud SQL** path only, add
-`--add-cloudsql-instances=$PROJECT_ID:$REGION:mathmap-db` and switch `DATABASE_URL` to the
-socket form (`...@/mathmap?host=/cloudsql/$PROJECT_ID:$REGION:mathmap-db`).
+Cloud SQL is not used, so there is no `--add-cloudsql-instances` and no socket path. If
+you ever switch, add that flag and change the URL to
+`...@/mathmap?host=/cloudsql/$PROJECT_ID:$REGION:mathmap-db`.
 
 `--source .` builds the included `Dockerfile` with Cloud Build and prints the
 `*.run.app` URL. Check that URL **before** touching DNS:
@@ -147,7 +184,7 @@ Environment variables that matter:
 | `TRUST_PROXY` | `1` | Cloud Run terminates TLS; without this every client shares one rate-limit bucket |
 | `CLIENT_ORIGIN` | `https://vivekbuilds.tech,https://www.vivekbuilds.tech` | CORS allow-list (comma-separated; verified both are echoed and unknown origins are not) |
 | `JWT_SECRET` | Secret Manager | changing it signs everyone out |
-| `DATABASE_URL` | provider string | |
+| `DATABASE_URL` | Secret Manager (Neon pooled URL) | carries the Neon password; never a plain env var on a shared project |
 | `ALLOW_DEMO_SEED` | **unset** | the demo-account shortcut stays off in production |
 
 ---
@@ -241,9 +278,9 @@ usually minutes, documented up to 24 hours. Until then the domain serves an erro
   effective limit doubles. Fine for a demo; a shared store would be needed for real.
 - **`--min-instances 0`** means a cold start on the first request after idle. Set it to
   `1` for a viva or demo slot (costs money, removes the wait).
-- **Trial credit**: ₹28,007 over 82 days. Cloud Run has a permanent free tier; Cloud SQL
-  does **not** (~$8-10/month for `db-f1-micro`). Neon/Supabase free Postgres keeps the
-  whole deployment at zero cost once the trial ends.
+- **Cost**: with Neon the deployment has no recurring charge — Cloud Run's free tier is
+  permanent and Neon's does not expire, so the ₹28,007 / 82-day credit stays untouched
+  headroom. The only upgrade worth considering is `--min-instances 1` to remove cold starts.
 - **Health check**: `GET /api/health` returns `{"status":"ok","db":"up"}` only when the
   database is reachable — useful as a Cloud Run readiness probe and for a quick smoke test.
 
@@ -309,9 +346,11 @@ Work through it in this order; each step has an observable check.
 
 - [ ] `gcloud services enable run.googleapis.com cloudbuild.googleapis.com` (and
       `secretmanager.googleapis.com`, `sqladmin.googleapis.com` on the Cloud SQL path)
-- [ ] Database created; `db/schema.sql` applied (**it drops and recreates every object**)
+- [ ] Neon project created; **region close to the Cloud Run region**
+- [ ] `db/schema.sql` applied to the database (**it drops and recreates every object**)
 - [ ] Seeded **once** from a workstation or one-off container, never from `CMD`
-- [ ] `JWT_SECRET` created in Secret Manager and referenced with `--set-secrets`
+- [ ] App uses the **pooled** (`-pooler`) Neon hostname; schema/seed used the direct one
+- [ ] `JWT_SECRET` **and** `DATABASE_URL` created in Secret Manager, both `--set-secrets`
 - [ ] Service deployed; `curl .../api/health` returns `{"status":"ok","db":"up"}`
 - [ ] Login works on the `*.run.app` URL **before** DNS is touched
 - [ ] Domain verified in Search Console (TXT record)
