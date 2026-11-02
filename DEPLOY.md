@@ -138,22 +138,54 @@ docker run --rm \
 
 ## 3. Deploy to Cloud Run
 
-Values used throughout: service `mathmap`, region **`asia-south1`** (Mumbai), domain
-**`vivekbuilds.tech`**. Domain mappings are regional, so the service and the mapping
+Values used throughout: service `mathmap`, region **`asia-southeast1`** (Singapore), domain
+**`vivekbuilds.tech`**. Singapore rather than Mumbai because the Neon database lives in
+`ap-southeast-1`: a page issues several queries, so the app should sit beside the database
+rather than beside the user. Domain mappings are regional, so the service and the mapping
 must live in the same region.
 
 ```bash
 export PROJECT_ID=your-project-id
-export REGION=asia-south1
+export REGION=asia-southeast1
 gcloud config set project "$PROJECT_ID"
+
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
+  secretmanager.googleapis.com artifactregistry.googleapis.com
 
 # one-time: keep the JWT signing key out of the image and out of the console
 openssl rand -hex 32 | gcloud secrets create mathmap-jwt --data-file=-
 
 # the database URL carries the Neon password, so it belongs in Secret Manager too
-printf '%s' 'postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/mathmap?sslmode=require' \
+printf '%s' 'postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require' \
   | gcloud secrets create mathmap-db-url --data-file=-
 
+# the Cloud Run runtime service account must be able to read both secrets
+PROJ_NUM=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
+for s in mathmap-jwt mathmap-db-url; do
+  gcloud secrets add-iam-policy-binding "$s" \
+    --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+
+# `--source .` builds with Cloud Build, and on some projects the Compute Engine
+# default service account cannot read the uploaded source. Grant these first:
+for role in roles/storage.objectViewer roles/artifactregistry.writer roles/logging.logWriter; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" --role="$role"
+done
+```
+
+Environment variables go in a **file**, not `--set-env-vars`. A comma-separated value such as
+`CLIENT_ORIGIN` is split into separate entries by gcloud's dict parser and the deploy fails
+with `Bad syntax for dict arg`. Keep `cloudrun-env.yaml` beside the repo:
+
+```yaml
+NODE_ENV: production
+TRUST_PROXY: "1"
+CLIENT_ORIGIN: https://vivekbuilds.tech,https://www.vivekbuilds.tech
+```
+
+```bash
 gcloud run deploy mathmap \
   --source . \
   --region "$REGION" \
@@ -161,8 +193,19 @@ gcloud run deploy mathmap \
   --port 8080 \
   --memory 512Mi --cpu 1 \
   --min-instances 0 --max-instances 2 \
-  --set-env-vars "NODE_ENV=production,TRUST_PROXY=1,CLIENT_ORIGIN=https://vivekbuilds.tech,https://www.vivekbuilds.tech" \
+  --env-vars-file cloudrun-env.yaml \
   --set-secrets JWT_SECRET=mathmap-jwt:latest,DATABASE_URL=mathmap-db-url:latest
+```
+
+Cloud SQL is not used, so there is no `--add-cloudsql-instances` and no socket path. If you
+ever switch, add that flag and change the URL to
+`...@/neondb?host=/cloudsql/$PROJECT_ID:$REGION:mathmap-db`.
+
+`--source .` builds the included `Dockerfile` with Cloud Build and prints the
+`*.run.app` URL. Check that URL **before** touching DNS:
+
+```bash
+curl https://mathmap-<project-number>.<region>.run.app/api/health   # expect {"status":"ok","db":"up"}
 ```
 
 Cloud SQL is not used, so there is no `--add-cloudsql-instances` and no socket path. If
@@ -187,14 +230,34 @@ Environment variables that matter:
 | `DATABASE_URL` | Secret Manager (Neon pooled URL) | carries the Neon password; never a plain env var on a shared project |
 | `ALLOW_DEMO_SEED` | **unset** | the demo-account shortcut stays off in production |
 
+### What is deployed
+
+| | |
+| --- | --- |
+| Service URL | `https://mathmap-363993004850.asia-southeast1.run.app` |
+| Project | `project-1fba041d-5a2a-46ea-a94` |
+| Region | `asia-southeast1` |
+| Image | built from `Dockerfile` via Cloud Build → Artifact Registry `cloud-run-source-deploy` |
+| Secrets | `mathmap-jwt`, `mathmap-db-url` |
+
+Verified live: `/api/health` reports `db: up`, `/` and `/dashboard` serve the SPA,
+`/api/unknown` stays a JSON 404, `/api/stats` returns the seeded 6/66/120/58/12/737, and a
+browser session logs in and renders a topic page with no CSP violations. Round trip to
+Singapore is ~120 ms from India.
+
 ---
 
 ## 4. Custom domain — `vivekbuilds.tech`
 
 ### 4.1 Prove ownership (Search Console)
 
-Cloud Run refuses to map a domain you have not verified. Sign in with the account
-that owns the Cloud project.
+Cloud Run refuses to map a domain you have not verified. This one is interactive — it needs
+a browser and the Google account that owns the project:
+
+```bash
+gcloud domains verify vivekbuilds.tech     # opens Search Console
+gcloud domains list-user-verified          # empty until verification completes
+```
 
 1. Search Console → **Add property** → choose **Domain** (not "URL prefix").
 2. Enter `vivekbuilds.tech`. Google shows a `google-site-verification=...` TXT value.
@@ -208,12 +271,14 @@ that owns the Cloud project.
 
 ### 4.2 Create the mappings
 
+For a fully managed Cloud Run service these live under the **beta** command group:
+
 ```bash
-gcloud run domain-mappings create --service mathmap --domain vivekbuilds.tech --region "$REGION"
-gcloud run domain-mappings create --service mathmap --domain www.vivekbuilds.tech --region "$REGION"
+gcloud beta run domain-mappings create --service mathmap --domain vivekbuilds.tech --region "$REGION"
+gcloud beta run domain-mappings create --service mathmap --domain www.vivekbuilds.tech --region "$REGION"
 
 # the authoritative record list for your mapping
-gcloud run domain-mappings describe \
+gcloud beta run domain-mappings describe \
   --service mathmap --domain vivekbuilds.tech --region "$REGION"
 ```
 

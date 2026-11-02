@@ -10,8 +10,16 @@ export const serverDir = path.resolve(__dirname, '..');
 export const rootDir = path.resolve(serverDir, '..');
 
 // Load env from the repository root first, then allow a server-local override.
-for (const envPath of [path.join(rootDir, '.env'), path.join(serverDir, '.env')]) {
-  if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
+// `.env.local` is included because `neon deploy` writes there when no `.env` is
+// present, and it is conventionally the highest-precedence file (as in Vite).
+for (const envPath of [
+  path.join(rootDir, '.env'),
+  path.join(serverDir, '.env'),
+  path.join(rootDir, '.env.local'),
+  path.join(serverDir, '.env.local'),
+]) {
+  if (!fs.existsSync(envPath)) continue;
+  dotenv.config({ path: envPath, override: envPath.endsWith('.env.local') });
 }
 
 function list(value, fallback) {
