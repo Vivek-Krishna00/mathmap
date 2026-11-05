@@ -27,3 +27,6 @@ yarn-error.log*
 .vscode/
 *.swp
 .neon
+
+# local-only: working transcript, not published
+docs/chat-history.md
