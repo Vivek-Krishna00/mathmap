@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../app.js';
-import { closePool } from '../db/pool.js';
+import { closePool, query } from '../db/pool.js';
 
 let server;
 let base;
@@ -88,26 +88,32 @@ test('roadmap routes require authentication', async (t) => {
 test('registration, login and /me round-trip', async (t) => {
   if (skipIfNoDb(t)) return;
   const email = `test-${Date.now()}@mathmap.dev`;
-  const reg = await fetch(`${base}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Test User', email, password: 'secret123' }),
-  });
-  assert.equal(reg.status, 201);
-  const { token, user } = await reg.json();
-  assert.ok(token);
-  assert.equal(user.role, 'learner');
+  try {
+    const reg = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Test User', email, password: 'secret123' }),
+    });
+    assert.equal(reg.status, 201);
+    const { token, user } = await reg.json();
+    assert.ok(token);
+    assert.equal(user.role, 'learner');
 
-  const me = await fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  assert.equal(me.status, 200);
-  assert.equal((await me.json()).user.email, email);
+    const me = await fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(me.status, 200);
+    assert.equal((await me.json()).user.email, email);
 
-  const bad = await fetch(`${base}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: 'wrongpassword' }),
-  });
-  assert.equal(bad.status, 401);
+    const bad = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'wrongpassword' }),
+    });
+    assert.equal(bad.status, 401);
+  } finally {
+    // These tests run against whatever DATABASE_URL points at, which may be a hosted
+    // database. Delete the account so repeated runs do not pile up members.
+    await query('DELETE FROM users WHERE email = $1', [email]);
+  }
 });
 
 test('moderation queue enforces roles', async (t) => {
