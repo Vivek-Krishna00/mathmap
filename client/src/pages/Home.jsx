@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useFetch } from '../hooks/useFetch.js';
-import { useReveal } from '../hooks/motion.js';
+import { useAtmosphere, useReveal } from '../hooks/motion.js';
 import { Icon } from '../components/icons.jsx';
 import RoadmapPreview from '../components/RoadmapPreview.jsx';
 import { Button, Loading, cx } from '../components/ui.jsx';
@@ -18,6 +18,7 @@ function Reveal({ children, className = '' }) {
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
+  const heroRef = useAtmosphere();
   const { data: branchData, loading: branchesLoading } = useFetch(() => api('/branches'), []);
   const { data: trackData } = useFetch(() => api('/tracks'), []);
   const { data: stats } = useFetch(() => api('/stats'), []);
@@ -28,8 +29,8 @@ export default function Home() {
   return (
     <div>
       {/* hero */}
-      <section className="relative overflow-hidden border-b border-line bg-sunken/40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-20 pb-24 grid lg:grid-cols-2 gap-12 items-center">
+      <section ref={heroRef} className="relative overflow-hidden border-b border-line bg-sunken/40">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-20 pb-24 grid lg:grid-cols-2 gap-12 items-center">
           <div className="animate-fade-up">
             <span className="badge bg-brand-600/10 text-brand-700 dark:text-brand-300">
               <Icon name="sparkles" size={13} /> Community-driven mathematics

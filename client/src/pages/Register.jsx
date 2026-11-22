@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/icons.jsx';
 import { Button, Card, Field, Input, Textarea } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useAtmosphere } from '../hooks/motion.js';
 import { useToast } from '../context/ToastContext.jsx';
 
 export default function Register() {
   const { register } = useAuth();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
+  const petals = useAtmosphere({ effect: 'cherry-blossom', intensity: 0.7 });
 
   const [form, setForm] = useState({ name: '', email: '', password: '', bio: '' });
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,8 @@ export default function Register() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
+    <div ref={petals} className="relative overflow-hidden">
+    <div className="relative z-10 mx-auto max-w-md px-4 py-16">
       <div className="text-center mb-8">
         <span className="inline-flex w-12 h-12 rounded-2xl bg-brand-600 text-white items-center justify-center mb-4">
           <Icon name="sigma" size={26} strokeWidth={2.2} />
@@ -60,6 +63,7 @@ export default function Register() {
           Already have an account? <Link className="link" to="/login">Sign in</Link>
         </p>
       </Card>
+    </div>
     </div>
   );
 }

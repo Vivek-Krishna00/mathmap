@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useFetch } from '../hooks/useFetch.js';
+import { celebrate } from '../hooks/motion.js';
 import RoadmapTimeline from '../components/RoadmapTimeline.jsx';
 import { Icon } from '../components/icons.jsx';
 import { Button, ErrorState, Input, Loading, Modal, ProgressBar } from '../components/ui.jsx';
@@ -83,7 +84,15 @@ export default function RoadmapView() {
           progress: { ...prev.progress, completed, percent: Math.round((completed / nextItems.length) * 100) },
         };
       });
-      if (status === 'completed') success('Topic marked complete. Keep going!');
+      if (status === 'completed') {
+        const done = data.items.every((it) => it.item_id === itemId || it.status === 'completed');
+        if (done) {
+          celebrate();
+          success('Roadmap complete. Brilliant work!');
+        } else {
+          success('Topic marked complete. Keep going!');
+        }
+      }
     } catch (err) {
       toastError(err.message);
     } finally {
