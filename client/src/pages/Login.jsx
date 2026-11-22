@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/icons.jsx';
 import { Button, Card, Field, Input } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useAtmosphere } from '../hooks/motion.js';
 import { useToast } from '../context/ToastContext.jsx';
 
 export default function Login() {
   const { login } = useAuth();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
+  const petals = useAtmosphere({ effect: 'cherry-blossom', intensity: 0.7 });
   const location = useLocation();
   const from = location.state?.from || '/dashboard';
 
@@ -32,7 +34,8 @@ export default function Login() {
   const fillDemo = (email, role) => setForm({ email, password: 'mathmap123' });
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
+    <div ref={petals} className="relative overflow-hidden">
+    <div className="relative z-10 mx-auto max-w-md px-4 py-16">
       <div className="text-center mb-8">
         <span className="inline-flex w-12 h-12 rounded-2xl bg-brand-600 text-white items-center justify-center mb-4">
           <Icon name="sigma" size={26} strokeWidth={2.2} />
@@ -80,6 +83,7 @@ export default function Login() {
           </div>
         </Card>
       )}
+    </div>
     </div>
   );
 }
