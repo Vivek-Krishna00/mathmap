@@ -155,6 +155,39 @@ All seeded users share the password **`mathmap123`**.
 
 ---
 
+## Database design
+
+![MathMap entity-relationship diagram](docs/er-diagram.png)
+
+PostgreSQL, 15 tables, defined in [`db/schema.sql`](db/schema.sql). The diagram shows keys and the main
+constrained columns; descriptive fields are left out for readability.
+
+| Group | Tables | Purpose |
+| --- | --- | --- |
+| **Concept graph** | `branches`, `topics`, `topic_prerequisites` | Topics belong to a branch. `topic_prerequisites` links `topics` to itself, and its rows are the DAG's edges. |
+| **Goal tracks** | `tracks`, `track_topics` | Many-to-many, so one topic can serve several goals without duplicated content. |
+| **Placement** | `placement_questions` | Multiple-choice self-check questions, grouped by branch. |
+| **Community content** | `resources`, `resource_topics`, `resource_votes`, `problems` | A resource can cover many topics; a problem belongs to one. |
+| **Learner data** | `users`, `roadmaps`, `roadmap_items`, `topic_notes` | Accounts, saved roadmaps with per-topic progress, and private notes and bookmarks. |
+| **Audit** | `moderation_log` | Moderation decisions on resources and problems. |
+
+Rules the database enforces itself:
+
+- **One vote per user per resource** — `resource_votes` has the composite key `(user_id, resource_id)`,
+  and `value` must be `-1` or `1`.
+- **No repeats** — a topic appears at most once per roadmap, and a user has at most one note per topic.
+- **No self-prerequisites** — a `CHECK` rejects a topic that requires itself. Longer cycles are not
+  blocked by the schema.
+- **Contributions outlive accounts** — deleting a user sets `submitted_by` and `moderator_id` to `NULL`,
+  while their roadmaps, notes and votes are deleted.
+- **Completion times follow status** — a trigger sets or clears `roadmap_items.completed_at` on update.
+
+Two links are deliberately not foreign keys: `roadmaps.branch_ids` and `track_ids` are integer arrays
+recording the generator's inputs, and `moderation_log.entity_type` + `entity_id` points to either a
+resource or a problem.
+
+---
+
 ## How the roadmap engine works
 
 `server/src/services/roadmapEngine.js` is the core of the product and is deliberately explainable —
